@@ -89,6 +89,46 @@ export async function checkDomains(
   return results;
 }
 
+async function apiGet(path: string) {
+  const token = await getToken();
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(
+      json.desc || json.message || `OpenProvider request failed: ${res.status}`,
+    );
+  }
+  return json;
+}
+
+export interface DnsRecord {
+  type: string;
+  name: string;
+  value: string;
+  ttl: number;
+  prio?: number;
+}
+
+export async function listDnsRecords(domainName: string): Promise<DnsRecord[]> {
+  const json = await apiGet(`/dns/zones/${domainName}/records`);
+  const records: DnsRecord[] = (json.data.records ?? []).map(
+    (r: { type: string; name: string; value: string; ttl: number; prio?: number }) => ({
+      type: r.type,
+      name: r.name,
+      value: r.value,
+      ttl: r.ttl,
+      prio: r.prio,
+    }),
+  );
+  return records;
+}
+
 export async function registerDomain(
   name: string,
   extension: string,
