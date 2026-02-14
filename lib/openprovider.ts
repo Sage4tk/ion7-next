@@ -129,6 +129,57 @@ export async function listDnsRecords(domainName: string): Promise<DnsRecord[]> {
   return records;
 }
 
+async function apiPut(path: string, body: unknown) {
+  const token = await getToken();
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(
+      json.desc || json.message || `OpenProvider request failed: ${res.status}`,
+    );
+  }
+  return json;
+}
+
+const ZOHO_MX_RECORDS: DnsRecord[] = [
+  { type: "MX", name: "", value: "mx.zoho.com", ttl: 3600, prio: 10 },
+  { type: "MX", name: "", value: "mx2.zoho.com", ttl: 3600, prio: 20 },
+  { type: "MX", name: "", value: "mx3.zoho.com", ttl: 3600, prio: 50 },
+];
+
+export async function addZohoMxRecords(domainName: string): Promise<void> {
+  const existing = await listDnsRecords(domainName);
+
+  const hasMx = existing.some(
+    (r) => r.type === "MX" && r.value.includes("zoho.com"),
+  );
+  if (hasMx) return; // Already configured
+
+  const records = [
+    ...existing.map((r) => ({
+      type: r.type,
+      name: r.name,
+      value: r.value,
+      ttl: r.ttl,
+      prio: r.prio ?? 0,
+    })),
+    ...ZOHO_MX_RECORDS,
+  ];
+
+  await apiPut(`/dns/zones/${domainName}`, {
+    name: domainName,
+    records: { records },
+  });
+}
+
 export async function registerDomain(
   name: string,
   extension: string,

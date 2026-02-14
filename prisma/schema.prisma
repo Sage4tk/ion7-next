@@ -38,6 +38,7 @@ model Domain {
   userId         String
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   site           Site?
+  emails         Email[]
 
   @@index([userId])
 }
@@ -50,4 +51,16 @@ model Site {
   content   Json     // All section data + theme colors
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Email {
+  id            String   @id @default(cuid())
+  address       String   @unique
+  zohoAccountId String?
+  domainId      String
+  domain        Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([domainId])
 }
