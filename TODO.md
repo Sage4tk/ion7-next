@@ -1,2 +1,5 @@
 - MANAGE SUBSCRIPTIONS
-- Add opendomain
+- domain renewal process
+- more templates and multiple pages
+- upload page to s3 and direct the domain to it.
+- add domain transfer

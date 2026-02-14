@@ -37,6 +37,17 @@ model Domain {
   updatedAt      DateTime  @updatedAt
   userId         String
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site           Site?
 
   @@index([userId])
+}
+
+model Site {
+  id        String   @id @default(cuid())
+  domainId  String   @unique
+  domain    Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  template  String   // "business" | "portfolio" | "restaurant"
+  content   Json     // All section data + theme colors
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
