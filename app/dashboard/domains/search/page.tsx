@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Globe, Loader2, Search } from "lucide-react";
-import { useUserStore } from "@/lib/store/user";
 
 interface DomainResult {
   domain: string;
@@ -17,16 +16,26 @@ interface DomainResult {
 
 export default function DomainSearchPage() {
   const router = useRouter();
-  const { fetchUser } = useUserStore();
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<DomainResult[]>([]);
+  const searchParams = useSearchParams();
+  const CACHE_KEY = "domain-search-results";
+  const initialQuery = searchParams.get("q") ?? "";
+
+  const [query, setQuery] = useState(initialQuery);
+  const [results, setResults] = useState<DomainResult[]>(() => {
+    if (!initialQuery) return [];
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { q, results: r } = JSON.parse(cached);
+        if (q === initialQuery) return r as DomainResult[];
+      }
+    } catch { /* ignore */ }
+    return [];
+  });
   const [searching, setSearching] = useState(false);
   const [registering, setRegistering] = useState<string | null>(null);
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!query.trim()) return;
-
+  const runSearch = useCallback(async (searchQuery: string) => {
     setSearching(true);
     setResults([]);
 
@@ -34,7 +43,7 @@ export default function DomainSearchPage() {
       const res = await fetch("/api/domains/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: query.trim() }),
+        body: JSON.stringify({ query: searchQuery }),
       });
 
       const data = await res.json();
@@ -45,14 +54,37 @@ export default function DomainSearchPage() {
       }
 
       setResults(data.results);
+      sessionStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({ q: searchQuery, results: data.results }),
+      );
     } catch {
       toast.error("Something went wrong");
     } finally {
       setSearching(false);
     }
+  }, []);
+
+  // Auto-search when returning with ?q= but no cached results
+  useEffect(() => {
+    if (initialQuery && results.length === 0) {
+      runSearch(initialQuery);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    if (!query.trim()) return;
+
+    // Push query into URL so back navigation restores it
+    const params = new URLSearchParams(searchParams);
+    params.set("q", query.trim());
+    router.replace(`?${params.toString()}`);
+
+    await runSearch(query.trim());
   }
 
-  async function handleRegister(domain: string) {
+  async function handleRegister(domain: string, price: number | null) {
     const dotIndex = domain.lastIndexOf(".");
     const name = domain.slice(0, dotIndex);
     const extension = domain.slice(dotIndex + 1);
@@ -60,10 +92,10 @@ export default function DomainSearchPage() {
     setRegistering(domain);
 
     try {
-      const res = await fetch("/api/domains/register", {
+      const res = await fetch("/api/domains/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, extension }),
+        body: JSON.stringify({ name, extension, price }),
       });
 
       const data = await res.json();
@@ -73,9 +105,8 @@ export default function DomainSearchPage() {
         return;
       }
 
-      toast.success(`${domain} registered successfully!`);
-      await fetchUser();
-      router.push("/dashboard");
+      // Redirect to Stripe Checkout
+      window.location.href = data.url;
     } catch {
       toast.error("Something went wrong");
     } finally {
@@ -172,7 +203,7 @@ export default function DomainSearchPage() {
                     {available && (
                       <Button
                         size="sm"
-                        onClick={() => handleRegister(r.domain)}
+                        onClick={() => handleRegister(r.domain, r.price)}
                         disabled={registering !== null}
                       >
                         {registering === r.domain ? (

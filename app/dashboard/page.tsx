@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { LogOut, CreditCard, Globe } from "lucide-react";
+import { LogOut, CreditCard, Globe, Calendar, Settings } from "lucide-react";
 import { useUserStore } from "@/lib/store/user";
 
 export default function DashboardPage() {
@@ -113,9 +113,30 @@ export default function DashboardPage() {
                     <Globe className="h-4 w-4 text-primary" />
                     <span className="font-semibold">{domain.name}</span>
                   </div>
-                  <p className="mt-1 text-sm capitalize text-muted-foreground">
-                    {domain.status}
-                  </p>
+                  <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                    <span className="capitalize">{domain.status}</span>
+                    {domain.expiresAt && (
+                      <>
+                        <span>·</span>
+                        <Calendar className="h-3.5 w-3.5" />
+                        <span>
+                          Expires{" "}
+                          {new Date(domain.expiresAt).toLocaleDateString()}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 w-full gap-2"
+                    onClick={() =>
+                      router.push(`/dashboard/domains/${domain.id}`)
+                    }
+                  >
+                    <Settings className="h-3.5 w-3.5" />
+                    Manage
+                  </Button>
                 </div>
               ))}
             </div>
