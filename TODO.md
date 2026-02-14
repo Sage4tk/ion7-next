@@ -1,0 +1,2 @@
+- MANAGE SUBSCRIPTIONS
+- Add opendomain
