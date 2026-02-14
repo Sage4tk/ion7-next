@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ion7
+
+A domain registration and management platform built with Next.js.
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router, Turbopack)
+- **Language:** TypeScript, React 19
+- **Database:** PostgreSQL (Neon serverless) via Prisma 7
+- **Auth:** NextAuth v5 (credentials provider, JWT sessions)
+- **Payments:** Stripe (subscriptions, checkout, customer portal)
+- **UI:** shadcn/ui, Tailwind CSS v4, Radix UI, Lucide icons, Recharts
+- **State:** Zustand
+- **Validation:** Zod v4, React Hook Form
+
+## Features
+
+- User registration and authentication
+- Subscription plan selection with Stripe checkout
+- Domain availability checking
+- Domain registration and management
+- User dashboard with domain overview
+
+## Project Structure
+
+```
+app/
+├── api/
+│   ├── auth/          # NextAuth routes, registration, current user
+│   ├── domains/       # Domain check & registration endpoints
+│   └── stripe/        # Checkout, portal, and webhook routes
+├── choose-plan/       # Plan selection page
+├── dashboard/         # Protected dashboard & domain management
+├── login/             # Login page
+├── register/          # Registration page
+└── subscription-success/
+prisma/
+└── schema.prisma      # User and Domain models
+lib/
+├── auth.ts            # NextAuth configuration
+├── prisma.ts          # Prisma client singleton
+└── generated/prisma/  # Generated Prisma client
+components/ui/         # shadcn/ui components
+middleware.ts          # Route protection for /dashboard
+```
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 20+
+- A [Neon](https://neon.tech) PostgreSQL database
+- A [Stripe](https://stripe.com) account
+
+### Environment Variables
+
+Create a `.env.local` file:
+
+```env
+DATABASE_URL=           # Neon PostgreSQL connection string
+AUTH_SECRET=            # NextAuth secret (generate with `openssl rand -base64 32`)
+STRIPE_SECRET_KEY=      # Stripe secret key
+STRIPE_WEBHOOK_SECRET=  # Stripe webhook signing secret
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=  # Stripe publishable key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# Install dependencies
+npm install
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Generate Prisma client
+npx prisma generate
 
-## Learn More
+# Run database migrations
+npx prisma migrate dev
 
-To learn more about Next.js, take a look at the following resources:
+# Start development server
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Command         | Description              |
+| --------------- | ------------------------ |
+| `npm run dev`   | Start dev server         |
+| `npm run build` | Production build         |
+| `npm run start` | Start production server  |
+| `npm run lint`  | Run ESLint               |
