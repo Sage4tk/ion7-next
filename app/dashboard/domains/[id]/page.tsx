@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 interface SiteInfo {
@@ -38,7 +39,6 @@ export default function DomainDashboardPage() {
   const [domain, setDomain] = useState<DomainDetail | null>(null);
   const [site, setSite] = useState<SiteInfo | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
-  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     if (!fetched) fetchUser();
@@ -75,22 +75,6 @@ export default function DomainDashboardPage() {
   const currentPlan = user?.plan
     ? plans.find((p) => p.id === user.plan)
     : null;
-
-  const handleManageSubscription = async () => {
-    if (!user?.stripeCustomerId) return;
-    setPortalLoading(true);
-    try {
-      const res = await fetch("/api/stripe/portal", { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        window.open(data.url, "_blank");
-      }
-    } catch {
-      // ignore
-    } finally {
-      setPortalLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -141,20 +125,16 @@ export default function DomainDashboardPage() {
               ))}
             </div>
 
-            {user?.stripeCustomerId && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 w-full sm:w-auto"
-                onClick={handleManageSubscription}
-                disabled={portalLoading}
-              >
-                {portalLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 w-full sm:w-auto"
+              asChild
+            >
+              <Link href={`/dashboard/domains/${id}/billing`}>
                 Manage Subscription
-              </Button>
-            )}
+              </Link>
+            </Button>
           </div>
         ) : (
           <div className="space-y-3">
@@ -166,9 +146,11 @@ export default function DomainDashboardPage() {
               variant="outline"
               size="sm"
               className="w-full sm:w-auto"
-              onClick={() => router.push("/#pricing")}
+              asChild
             >
-              View Plans
+              <Link href={`/dashboard/domains/${id}/billing`}>
+                View Plans
+              </Link>
             </Button>
           </div>
         )}

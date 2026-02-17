@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Globe, Calendar, Loader2, Mail, LayoutDashboard } from "lucide-react";
+import { ArrowLeft, Globe, Calendar, Loader2, Mail, LayoutDashboard, CreditCard } from "lucide-react";
 import Link from "next/link";
 
 interface Domain {
@@ -74,12 +74,14 @@ export default function DomainLayout({
   const basePath = `/dashboard/domains/${id}`;
   const isWebsiteTab = pathname.startsWith(`${basePath}/website`);
   const isEmailsTab = pathname.startsWith(`${basePath}/emails`);
-  const isDashboardTab = !isWebsiteTab && !isEmailsTab;
+  const isBillingTab = pathname.startsWith(`${basePath}/billing`);
+  const isDashboardTab = !isWebsiteTab && !isEmailsTab && !isBillingTab;
 
   const tabs = [
     { label: "Dashboard", href: basePath, icon: LayoutDashboard, active: isDashboardTab },
     { label: "Website", href: `${basePath}/website`, icon: Globe, active: isWebsiteTab },
     { label: "Emails", href: `${basePath}/emails`, icon: Mail, active: isEmailsTab },
+    { label: "Billing", href: `${basePath}/billing`, icon: CreditCard, active: isBillingTab },
   ];
 
   return (
