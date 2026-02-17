@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Globe, Calendar, Loader2, Mail } from "lucide-react";
+import { ArrowLeft, Globe, Calendar, Loader2, Mail, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 
 interface Domain {
@@ -72,17 +72,20 @@ export default function DomainLayout({
   }
 
   const basePath = `/dashboard/domains/${id}`;
+  const isWebsiteTab = pathname.startsWith(`${basePath}/website`);
   const isEmailsTab = pathname.startsWith(`${basePath}/emails`);
+  const isDashboardTab = !isWebsiteTab && !isEmailsTab;
 
   const tabs = [
-    { label: "Website", href: basePath, icon: Globe, active: !isEmailsTab },
+    { label: "Dashboard", href: basePath, icon: LayoutDashboard, active: isDashboardTab },
+    { label: "Website", href: `${basePath}/website`, icon: Globe, active: isWebsiteTab },
     { label: "Emails", href: `${basePath}/emails`, icon: Mail, active: isEmailsTab },
   ];
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">
       <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center px-6">
+        <div className="mx-auto flex h-14 sm:h-16 max-w-6xl items-center px-4 sm:px-6">
           <Button
             variant="ghost"
             size="sm"
@@ -90,17 +93,18 @@ export default function DomainLayout({
             onClick={() => router.push("/dashboard")}
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
+            <span className="hidden sm:inline">Back to Dashboard</span>
+            <span className="sm:hidden">Back</span>
           </Button>
         </div>
       </nav>
 
-      <div className="mx-auto max-w-6xl px-6 py-12">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-12">
         {/* Domain Info */}
-        <div className="rounded-lg border border-border/50 bg-muted/30 p-6">
-          <div className="flex items-center gap-3">
-            <Globe className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">{domain.name}</h1>
+        <div className="rounded-lg border border-border/50 bg-muted/30 p-4 sm:p-6">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <Globe className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            <h1 className="text-lg sm:text-2xl font-bold break-all">{domain.name}</h1>
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${statusColor[domain.status] || "bg-muted text-muted-foreground"}`}
             >
@@ -108,10 +112,10 @@ export default function DomainLayout({
             </span>
           </div>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 sm:mt-4 grid gap-2 sm:gap-4 sm:grid-cols-2">
             {domain.registeredAt && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
+                <Calendar className="h-4 w-4 shrink-0" />
                 <span>
                   Registered {new Date(domain.registeredAt).toLocaleDateString()}
                 </span>
@@ -119,7 +123,7 @@ export default function DomainLayout({
             )}
             {domain.expiresAt && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
+                <Calendar className="h-4 w-4 shrink-0" />
                 <span>
                   Expires {new Date(domain.expiresAt).toLocaleDateString()}
                 </span>
@@ -128,9 +132,29 @@ export default function DomainLayout({
           </div>
         </div>
 
+        {/* Mobile Tab Bar */}
+        <div className="mt-4 overflow-x-auto md:hidden">
+          <nav className="flex gap-1 rounded-lg border border-border/50 bg-muted/30 p-1">
+            {tabs.map((tab) => (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                  tab.active
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                }`}
+              >
+                <tab.icon className="h-4 w-4" />
+                {tab.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
         {/* Sidebar + Content */}
-        <div className="mt-8 flex gap-8">
-          <aside className="w-48 shrink-0">
+        <div className="mt-4 sm:mt-8 flex gap-8">
+          <aside className="hidden md:block w-48 shrink-0">
             <nav className="flex flex-col gap-1">
               {tabs.map((tab) => (
                 <Link

@@ -66,50 +66,56 @@ const steps = [
 
 const pricingPlans = [
   {
-    name: "Starter",
-    price: "$5",
-    period: "/mo",
-    description: "Perfect for personal sites and side projects.",
+    name: "Basic",
+    price: "109 AED",
+    period: " /month",
+    yearlyPrice: "1,199 AED /yr",
+    description: "Everything you need to get started online.",
     popular: false,
     features: [
-      "1 website",
-      "Free .ion7.dev subdomain",
-      "1 email account",
-      "5 GB storage",
-      "SSL certificate",
+      "Access to ION7 Dashboard (1 user account access)",
+      "1 Free template access (Customizable)",
+      "6 Customizable web pages",
+      "Free custom domain credit of 50 AED included",
+      "Free shared web hosting",
+      "Free Email Accounts (Up to 5 accounts)",
+      "25GB Storage",
+      "Unlimited Bandwidth",
+      "Free SSL Certificates",
+      "Free Weekly backup",
+      "Free 24/7 Client Support",
     ],
   },
   {
     name: "Pro",
-    price: "$15",
-    period: "/mo",
+    price: "199 AED",
+    period: " /month",
+    yearlyPrice: "2,199 AED /yr",
     description: "For professionals who need more power and flexibility.",
     popular: true,
     features: [
-      "5 websites",
-      "Free custom domain",
-      "10 email accounts",
-      "50 GB storage",
-      "SSL certificate",
-      "Priority support",
-      "Analytics dashboard",
+      "Everything in BASIC PLAN",
+      "Access to ION7 Dashboard (3 user account access)",
+      "Unlimited Access to ION7 website templates (Customizable)",
+      "10 Customizable web pages",
+      "Free Email Accounts (Up to 10 accounts)",
+      "50GB Storage",
     ],
   },
   {
     name: "Business",
-    price: "$39",
-    period: "/mo",
+    price: "349 AED",
+    period: " /month",
+    yearlyPrice: "3,839 AED /yr",
     description: "For teams and businesses that demand the best.",
     popular: false,
     features: [
-      "Unlimited websites",
-      "Free custom domain",
-      "Unlimited email accounts",
-      "200 GB storage",
-      "SSL certificate",
-      "24/7 priority support",
-      "Advanced analytics",
-      "Team collaboration",
+      "Everything in PRO PLAN",
+      "Access to ION7 Dashboard (5 user account access)",
+      "Unlimited Access to ION7 website templates (Customizable)",
+      "Unlimited Customizable web pages",
+      "Free Email Accounts (Up to 50 accounts)",
+      "100GB Storage",
     ],
   },
 ];
@@ -265,10 +271,13 @@ export default async function Home() {
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-6">
-                  <Badge>Most Popular</Badge>
+                  <Badge>Recommended</Badge>
                 </div>
               )}
               <CardHeader>
+                <div className="mb-1 text-sm font-medium text-primary">
+                  {plan.yearlyPrice}
+                </div>
                 <CardTitle>{plan.name}</CardTitle>
                 <CardDescription>{plan.description}</CardDescription>
                 <div className="mt-2">

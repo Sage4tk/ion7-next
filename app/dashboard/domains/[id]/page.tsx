@@ -1,178 +1,305 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useUserStore } from "@/lib/store/user";
+import { plans } from "@/lib/plans";
+import {
+  Loader2,
+  CreditCard,
+  Globe,
+  Calendar,
+  ExternalLink,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Loader2, ExternalLink } from "lucide-react";
-import { PresetSelector } from "@/components/blocks/PresetSelector";
-import { PageBuilder } from "@/components/blocks/PageBuilder";
-import type { PresetType, SiteContent } from "@/lib/blocks/types";
 
-interface Site {
+interface SiteInfo {
   id: string;
   template: string;
-  content: SiteContent;
+  createdAt: string;
+  updatedAt: string;
 }
 
-interface DnsRecord {
-  type: string;
+interface DomainDetail {
+  id: string;
   name: string;
-  value: string;
-  ttl: number;
-  prio?: number;
+  status: string;
+  registeredAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
 }
 
-export default function DomainManagePage() {
+export default function DomainDashboardPage() {
   const { id } = useParams<{ id: string }>();
-  const [site, setSite] = useState<Site | null | undefined>(undefined);
-  const [records, setRecords] = useState<DnsRecord[]>([]);
-  const [dnsLoading, setDnsLoading] = useState(true);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const router = useRouter();
+  const { user, fetchUser, fetched } = useUserStore();
+  const [domain, setDomain] = useState<DomainDetail | null>(null);
+  const [site, setSite] = useState<SiteInfo | null | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
-    async function fetchSite() {
+    if (!fetched) fetchUser();
+  }, [fetched, fetchUser]);
+
+  useEffect(() => {
+    async function fetchData() {
       try {
-        const res = await fetch(`/api/domains/${id}/site`);
-        if (res.ok) {
-          const data = await res.json();
+        const [domainRes, siteRes] = await Promise.all([
+          fetch(`/api/domains/${id}`),
+          fetch(`/api/domains/${id}/site`),
+        ]);
+
+        if (domainRes.ok) {
+          const data = await domainRes.json();
+          setDomain(data.domain);
+        }
+
+        if (siteRes.ok) {
+          const data = await siteRes.json();
           setSite(data.site ?? null);
         } else {
           setSite(null);
         }
       } catch {
         setSite(null);
-      }
-    }
-
-    async function fetchDns() {
-      try {
-        const res = await fetch(`/api/domains/${id}/dns`);
-        if (res.ok) {
-          const data = await res.json();
-          setRecords(data.records);
-        }
-      } catch {
-        // DNS records are non-critical
       } finally {
-        setDnsLoading(false);
+        setLoading(false);
       }
     }
-
-    fetchSite();
-    fetchDns();
+    fetchData();
   }, [id]);
 
-  const handleSelectPreset = useCallback(async (preset: PresetType) => {
-    const res = await fetch(`/api/domains/${id}/site`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ template: preset }),
-    });
-    if (!res.ok) throw new Error("Failed to create site");
-    const data = await res.json();
-    setSite(data.site);
-  }, [id]);
+  const currentPlan = user?.plan
+    ? plans.find((p) => p.id === user.plan)
+    : null;
 
-  const handleSave = useCallback(async (content: SiteContent) => {
-    const res = await fetch(`/api/domains/${id}/site`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
-    });
-    if (!res.ok) throw new Error("Failed to save");
-    const data = await res.json();
-    setSite(data.site);
-    setSaveMessage("Saved successfully!");
-    setTimeout(() => setSaveMessage(null), 3000);
-  }, [id]);
+  const handleManageSubscription = async () => {
+    if (!user?.stripeCustomerId) return;
+    setPortalLoading(true);
+    try {
+      const res = await fetch("/api/stripe/portal", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        window.open(data.url, "_blank");
+      }
+    } catch {
+      // ignore
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
-    <div>
-      {/* Website Builder Section */}
-      <div>
-        {site === undefined ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : site === null ? (
-          <PresetSelector onSelect={handleSelectPreset} />
-        ) : (
-          <div>
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold capitalize">
-                {site.template} Site
-              </h2>
-              <div className="flex items-center gap-3">
-                {saveMessage && (
-                  <span className="text-sm text-green-400">{saveMessage}</span>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => window.open(`/preview/${site.id}`, "_blank")}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Preview
-                </Button>
+    <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+      {/* Current Subscription Card */}
+      <div className="rounded-lg border border-border/50 bg-muted/30 p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <CreditCard className="h-5 w-5 text-primary" />
+          <h2 className="text-base sm:text-lg font-semibold">Current Subscription</h2>
+        </div>
+
+        {currentPlan ? (
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-xl sm:text-2xl font-bold">
+                  {currentPlan.name}{" "}
+                  <span className="text-sm sm:text-base font-normal text-muted-foreground">
+                    {currentPlan.price}
+                    {currentPlan.period}
+                  </span>
+                </p>
+                <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+                  {currentPlan.description}
+                </p>
               </div>
+              <span className="shrink-0 rounded-full bg-green-500/20 px-2.5 py-0.5 text-xs font-medium text-green-400">
+                Active
+              </span>
             </div>
-            <div className="mt-4">
-              <PageBuilder
-                content={site.content}
-                onSave={handleSave}
-              />
+
+            <div className="grid gap-2 pt-2">
+              {currentPlan.features.slice(0, 4).map((feature) => (
+                <div
+                  key={feature}
+                  className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                  {feature}
+                </div>
+              ))}
             </div>
+
+            {user?.stripeCustomerId && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 w-full sm:w-auto"
+                onClick={handleManageSubscription}
+                disabled={portalLoading}
+              >
+                {portalLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Manage Subscription
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <AlertCircle className="h-4 w-4" />
+              <p className="text-sm">No active subscription</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={() => router.push("/#pricing")}
+            >
+              View Plans
+            </Button>
           </div>
         )}
       </div>
 
-      {/* DNS Records */}
-      <div className="mt-8">
-        <h2 className="text-xl font-bold">DNS Records</h2>
-        <div className="mt-4 overflow-x-auto rounded-lg border border-border/50">
-          {dnsLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : records.length === 0 ? (
-            <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-              No DNS records found.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/50 bg-muted/30 text-left text-xs uppercase text-muted-foreground">
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Value</th>
-                  <th className="px-4 py-3">TTL</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((record, i) => (
-                  <tr
-                    key={i}
-                    className="border-b border-border/30 last:border-0"
-                  >
-                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-medium">
-                      {record.type}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs">
-                      {record.name || "@"}
-                    </td>
-                    <td className="max-w-xs truncate px-4 py-3 font-mono text-xs text-muted-foreground">
-                      {record.value}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
-                      {record.ttl}s
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+      {/* Domain Information Card */}
+      <div className="rounded-lg border border-border/50 bg-muted/30 p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <Globe className="h-5 w-5 text-primary" />
+          <h2 className="text-base sm:text-lg font-semibold">Domain Information</h2>
         </div>
+
+        {domain ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+              <div>
+                <p className="text-xs uppercase text-muted-foreground">
+                  Domain Name
+                </p>
+                <p className="mt-1 text-sm sm:text-base font-medium break-all">{domain.name}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase text-muted-foreground">
+                  Status
+                </p>
+                <p className="mt-1 text-sm sm:text-base font-medium capitalize">{domain.status}</p>
+              </div>
+              {domain.registeredAt && (
+                <div>
+                  <p className="text-xs uppercase text-muted-foreground">
+                    Registered
+                  </p>
+                  <div className="mt-1 flex items-center gap-1.5 text-xs sm:text-sm">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    {new Date(domain.registeredAt).toLocaleDateString()}
+                  </div>
+                </div>
+              )}
+              {domain.expiresAt && (
+                <div>
+                  <p className="text-xs uppercase text-muted-foreground">
+                    Expires
+                  </p>
+                  <div className="mt-1 flex items-center gap-1.5 text-xs sm:text-sm">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    {new Date(domain.expiresAt).toLocaleDateString()}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Domain information unavailable.
+          </p>
+        )}
+      </div>
+
+      {/* Live Website Card */}
+      <div className="rounded-lg border border-border/50 bg-muted/30 p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <ExternalLink className="h-5 w-5 text-primary" />
+          <h2 className="text-base sm:text-lg font-semibold">Live Website</h2>
+        </div>
+
+        {site === undefined ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : site ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+              <div>
+                <p className="text-xs uppercase text-muted-foreground">
+                  Template
+                </p>
+                <p className="mt-1 text-sm sm:text-base font-medium capitalize">{site.template}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase text-muted-foreground">
+                  Last Updated
+                </p>
+                <p className="mt-1 text-xs sm:text-sm">
+                  {new Date(site.updatedAt).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="flex items-center gap-1.5 rounded-full bg-green-500/20 px-2.5 py-0.5 text-xs font-medium text-green-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+                Live
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => window.open(`/preview/${site.id}`, "_blank")}
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                View Site
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  router.push(`/dashboard/domains/${id}/website`)
+                }
+              >
+                Edit Website
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <AlertCircle className="h-4 w-4" />
+              <p className="text-sm">No website created yet</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={() =>
+                router.push(`/dashboard/domains/${id}/website`)
+              }
+            >
+              Create Website
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

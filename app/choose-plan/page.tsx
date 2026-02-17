@@ -102,10 +102,13 @@ export default function ChoosePlanPage() {
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-6">
-                  <Badge>Most Popular</Badge>
+                  <Badge>Recommended</Badge>
                 </div>
               )}
               <CardHeader>
+                <div className="mb-1 text-sm font-medium text-primary">
+                  {plan.yearlyPrice}
+                </div>
                 <CardTitle>{plan.name}</CardTitle>
                 <CardDescription>{plan.description}</CardDescription>
                 <div className="mt-2">
