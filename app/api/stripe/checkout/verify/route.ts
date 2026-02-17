@@ -27,6 +27,10 @@ export async function GET(request: Request) {
   const subscription = checkoutSession.subscription as import("stripe").Stripe.Subscription;
   const priceId = subscription?.items?.data[0]?.price.id;
   const plan = priceId ? getPlanByPriceId(priceId) : undefined;
+  const interval =
+    subscription?.items?.data[0]?.price.recurring?.interval === "year"
+      ? "yearly"
+      : "monthly";
 
-  return NextResponse.json({ success: true, plan: plan?.id ?? null });
+  return NextResponse.json({ success: true, plan: plan?.id ?? null, interval });
 }

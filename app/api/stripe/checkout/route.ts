@@ -10,13 +10,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { plan } = await request.json();
+  const { plan, interval = "monthly" } = await request.json();
 
   if (!plan || !getPlanById(plan)) {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
   }
 
-  const priceId = getStripePriceId(plan);
+  if (interval !== "monthly" && interval !== "yearly") {
+    return NextResponse.json({ error: "Invalid interval" }, { status: 400 });
+  }
+
+  const priceId = getStripePriceId(plan, interval);
   if (!priceId) {
     return NextResponse.json({ error: "Plan not configured" }, { status: 500 });
   }

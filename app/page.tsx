@@ -1,9 +1,7 @@
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -15,12 +13,12 @@ import {
   Mail,
   Layout,
   Zap,
-  Check,
   Search,
   Rocket,
   ArrowRight,
 } from "lucide-react";
 import { auth } from "@/lib/auth";
+import { PricingSection } from "@/components/pricing-section";
 
 const features = [
   {
@@ -61,62 +59,6 @@ const steps = [
     step: "3",
     title: "Launch with Email",
     description: "Go live with professional email and start growing.",
-  },
-];
-
-const pricingPlans = [
-  {
-    name: "Basic",
-    price: "109 AED",
-    period: " /month",
-    yearlyPrice: "1,199 AED /yr",
-    description: "Everything you need to get started online.",
-    popular: false,
-    features: [
-      "Access to ION7 Dashboard (1 user account access)",
-      "1 Free template access (Customizable)",
-      "6 Customizable web pages",
-      "Free custom domain credit of 50 AED included",
-      "Free shared web hosting",
-      "Free Email Accounts (Up to 5 accounts)",
-      "25GB Storage",
-      "Unlimited Bandwidth",
-      "Free SSL Certificates",
-      "Free Weekly backup",
-      "Free 24/7 Client Support",
-    ],
-  },
-  {
-    name: "Pro",
-    price: "199 AED",
-    period: " /month",
-    yearlyPrice: "2,199 AED /yr",
-    description: "For professionals who need more power and flexibility.",
-    popular: true,
-    features: [
-      "Everything in BASIC PLAN",
-      "Access to ION7 Dashboard (3 user account access)",
-      "Unlimited Access to ION7 website templates (Customizable)",
-      "10 Customizable web pages",
-      "Free Email Accounts (Up to 10 accounts)",
-      "50GB Storage",
-    ],
-  },
-  {
-    name: "Business",
-    price: "349 AED",
-    period: " /month",
-    yearlyPrice: "3,839 AED /yr",
-    description: "For teams and businesses that demand the best.",
-    popular: false,
-    features: [
-      "Everything in PRO PLAN",
-      "Access to ION7 Dashboard (5 user account access)",
-      "Unlimited Access to ION7 website templates (Customizable)",
-      "Unlimited Customizable web pages",
-      "Free Email Accounts (Up to 50 accounts)",
-      "100GB Storage",
-    ],
   },
 ];
 
@@ -250,64 +192,7 @@ export default async function Home() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="mx-auto max-w-6xl px-6 py-24">
-        <div className="mb-16 text-center">
-          <h2 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">
-            Simple, transparent pricing
-          </h2>
-          <p className="mx-auto max-w-2xl text-muted-foreground">
-            No hidden fees. Pick a plan that fits and upgrade anytime.
-          </p>
-        </div>
-        <div className="grid gap-6 md:grid-cols-3">
-          {pricingPlans.map((plan) => (
-            <Card
-              key={plan.name}
-              className={
-                plan.popular
-                  ? "relative border-primary/50 shadow-lg shadow-primary/5"
-                  : "border-border/50"
-              }
-            >
-              {plan.popular && (
-                <div className="absolute -top-3 left-6">
-                  <Badge>Recommended</Badge>
-                </div>
-              )}
-              <CardHeader>
-                <div className="mb-1 text-sm font-medium text-primary">
-                  {plan.yearlyPrice}
-                </div>
-                <CardTitle>{plan.name}</CardTitle>
-                <CardDescription>{plan.description}</CardDescription>
-                <div className="mt-2">
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-primary" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  className="w-full"
-                  variant={plan.popular ? "default" : "outline"}
-                  asChild
-                >
-                  <Link href="/register">Get Started</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      </section>
+      <PricingSection />
 
       {/* CTA Banner */}
       <section className="border-y border-border/50 bg-muted/30">

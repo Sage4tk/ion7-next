@@ -12,6 +12,7 @@ export interface UserData {
   name: string;
   email: string;
   plan: string | null;
+  billingInterval: string | null;
   stripeCustomerId: string | null;
   domains: DomainData[];
 }

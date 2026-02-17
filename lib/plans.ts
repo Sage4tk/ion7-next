@@ -1,10 +1,13 @@
+export type BillingInterval = "monthly" | "yearly";
+
 export const plans = [
   {
     id: "basic",
     name: "Basic",
     price: "109 AED",
+    yearlyDisplayPrice: "1,090 AED",
     period: " /month",
-    yearlyPrice: "1,199 AED /yr",
+    yearlyPrice: "1,090 AED /yr",
     description: "Everything you need to get started online.",
     popular: false,
     features: [
@@ -25,8 +28,9 @@ export const plans = [
     id: "pro",
     name: "Pro",
     price: "199 AED",
+    yearlyDisplayPrice: "1,990 AED",
     period: " /month",
-    yearlyPrice: "2,199 AED /yr",
+    yearlyPrice: "1,990 AED /yr",
     description: "For professionals who need more power and flexibility.",
     popular: true,
     features: [
@@ -42,8 +46,9 @@ export const plans = [
     id: "business",
     name: "Business",
     price: "349 AED",
+    yearlyDisplayPrice: "3,490 AED",
     period: " /month",
-    yearlyPrice: "3,839 AED /yr",
+    yearlyPrice: "3,490 AED /yr",
     description: "For teams and businesses that demand the best.",
     popular: false,
     features: [
@@ -60,7 +65,18 @@ export const plans = [
 export type PlanId = (typeof plans)[number]["id"];
 
 /** Server-only: maps plan ID to Stripe price ID */
-export function getStripePriceId(planId: string): string | undefined {
+export function getStripePriceId(
+  planId: string,
+  interval: BillingInterval = "monthly",
+): string | undefined {
+  if (interval === "yearly") {
+    const map: Record<string, string | undefined> = {
+      basic: process.env.STRIPE_BASIC_YEARLY_PRICE_ID,
+      pro: process.env.STRIPE_PRO_YEARLY_PRICE_ID,
+      business: process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID,
+    };
+    return map[planId];
+  }
   const map: Record<string, string | undefined> = {
     basic: process.env.STRIPE_BASIC_PRICE_ID,
     pro: process.env.STRIPE_PRO_PRICE_ID,
@@ -75,6 +91,9 @@ export function getPlanByPriceId(priceId: string) {
     [process.env.STRIPE_BASIC_PRICE_ID!]: "basic",
     [process.env.STRIPE_PRO_PRICE_ID!]: "pro",
     [process.env.STRIPE_BUSINESS_PRICE_ID!]: "business",
+    [process.env.STRIPE_BASIC_YEARLY_PRICE_ID!]: "basic",
+    [process.env.STRIPE_PRO_YEARLY_PRICE_ID!]: "pro",
+    [process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID!]: "business",
   };
   const planId = entries[priceId];
   return planId ? plans.find((p) => p.id === planId) : undefined;

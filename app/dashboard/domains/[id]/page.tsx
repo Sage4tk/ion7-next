@@ -100,8 +100,9 @@ export default function DomainDashboardPage() {
                 <p className="text-xl sm:text-2xl font-bold">
                   {currentPlan.name}{" "}
                   <span className="text-sm sm:text-base font-normal text-muted-foreground">
-                    {currentPlan.price}
-                    {currentPlan.period}
+                    {user?.billingInterval === "yearly"
+                      ? `${currentPlan.yearlyDisplayPrice} /year`
+                      : `${currentPlan.price}${currentPlan.period}`}
                   </span>
                 </p>
                 <p className="mt-1 text-xs sm:text-sm text-muted-foreground">

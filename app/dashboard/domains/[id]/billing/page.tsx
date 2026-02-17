@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useUserStore } from "@/lib/store/user";
-import { plans } from "@/lib/plans";
+import { plans, type BillingInterval } from "@/lib/plans";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -21,6 +21,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { BillingToggle } from "@/components/billing-toggle";
 
 interface PreviewData {
   currentPlan: { id: string; name: string } | null;
@@ -41,15 +42,23 @@ export default function BillingPage() {
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [interval, setInterval] = useState<BillingInterval>("monthly");
 
   useEffect(() => {
     if (!fetched) fetchUser();
   }, [fetched, fetchUser]);
 
+  useEffect(() => {
+    if (user?.billingInterval === "yearly" || user?.billingInterval === "monthly") {
+      setInterval(user.billingInterval);
+    }
+  }, [user?.billingInterval]);
+
   const currentPlanId = user?.plan ?? null;
+  const currentInterval = (user?.billingInterval ?? "monthly") as BillingInterval;
 
   const handlePlanClick = async (planId: string) => {
-    if (planId === currentPlanId) return;
+    if (planId === currentPlanId && interval === currentInterval) return;
     setSelectedPlan(planId);
     setDialogOpen(true);
     setPreview(null);
@@ -59,7 +68,7 @@ export default function BillingPage() {
       const res = await fetch("/api/stripe/subscription/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newPlan: planId }),
+        body: JSON.stringify({ newPlan: planId, interval }),
       });
 
       if (!res.ok) {
@@ -86,7 +95,7 @@ export default function BillingPage() {
       const res = await fetch("/api/stripe/subscription/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newPlan: selectedPlan }),
+        body: JSON.stringify({ newPlan: selectedPlan, interval }),
       });
 
       if (!res.ok) {
@@ -118,6 +127,10 @@ export default function BillingPage() {
     return planOrder.indexOf(planId) > planOrder.indexOf(currentPlanId);
   };
 
+  const isSamePlanDifferentInterval = (planId: string) => {
+    return planId === currentPlanId && interval !== currentInterval;
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -127,10 +140,15 @@ export default function BillingPage() {
         </p>
       </div>
 
+      <div className="flex justify-center">
+        <BillingToggle interval={interval} onChange={setInterval} />
+      </div>
+
       <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
         {plans.map((plan) => {
-          const isCurrent = plan.id === currentPlanId;
+          const isCurrent = plan.id === currentPlanId && interval === currentInterval;
           const upgrade = isUpgrade(plan.id);
+          const intervalSwitch = isSamePlanDifferentInterval(plan.id);
 
           return (
             <div
@@ -149,16 +167,26 @@ export default function BillingPage() {
 
               <h3 className="text-lg font-semibold">{plan.name}</h3>
               <div className="mt-2">
-                <span className="text-2xl sm:text-3xl font-bold">
-                  {plan.price}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {plan.period}
-                </span>
+                {interval === "monthly" ? (
+                  <>
+                    <span className="text-2xl sm:text-3xl font-bold">
+                      {plan.price}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {plan.period}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-2xl sm:text-3xl font-bold">
+                      {plan.yearlyDisplayPrice}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {" "}/year
+                    </span>
+                  </>
+                )}
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {plan.yearlyPrice}
-              </p>
               <p className="mt-2 text-sm text-muted-foreground">
                 {plan.description}
               </p>
@@ -192,6 +220,14 @@ export default function BillingPage() {
                   >
                     No active subscription
                   </Button>
+                ) : intervalSwitch ? (
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => handlePlanClick(plan.id)}
+                  >
+                    Switch to {interval === "yearly" ? "Yearly" : "Monthly"}
+                  </Button>
                 ) : upgrade ? (
                   <Button
                     className="w-full gap-2"
@@ -221,9 +257,11 @@ export default function BillingPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {selectedPlan && isUpgrade(selectedPlan)
-                ? "Upgrade Plan"
-                : "Downgrade Plan"}
+              {selectedPlan && isSamePlanDifferentInterval(selectedPlan)
+                ? "Switch Billing Interval"
+                : selectedPlan && isUpgrade(selectedPlan)
+                  ? "Upgrade Plan"
+                  : "Downgrade Plan"}
             </DialogTitle>
             <DialogDescription>
               Review the changes to your subscription before confirming.
@@ -240,10 +278,12 @@ export default function BillingPage() {
               <div className="flex items-center justify-center gap-3 rounded-lg bg-muted/50 p-4">
                 <span className="font-medium">
                   {preview.currentPlan?.name ?? "None"}
+                  {currentInterval === "yearly" ? " (Yearly)" : " (Monthly)"}
                 </span>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium text-primary">
                   {preview.newPlan.name}
+                  {interval === "yearly" ? " (Yearly)" : " (Monthly)"}
                 </span>
               </div>
 

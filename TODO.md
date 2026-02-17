@@ -1,5 +1,6 @@
-- MANAGE SUBSCRIPTIONS
+- MANAGE SUBSCRIPTIONS (needs test)
 - domain renewal process
 - more templates and multiple pages
 - upload page to s3 and direct the domain to it.
 - add domain transfer
+- test new stripe setup

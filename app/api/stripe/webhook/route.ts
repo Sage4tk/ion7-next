@@ -84,14 +84,19 @@ export async function POST(request: Request) {
             console.log(`[stripe webhook] priceId: ${priceId}, plan: ${plan?.id}`);
 
             if (plan) {
+              const billingInterval =
+                subscription.items.data[0]?.price.recurring?.interval === "year"
+                  ? "yearly"
+                  : "monthly";
               await prisma.user.update({
                 where: { stripeCustomerId: customerId },
                 data: {
                   plan: plan.id,
+                  billingInterval,
                   stripeSubscriptionId: subscription.id,
                 },
               });
-              console.log(`[stripe webhook] updated user plan to ${plan.id}`);
+              console.log(`[stripe webhook] updated user plan to ${plan.id} (${billingInterval})`);
             } else {
               console.log(`[stripe webhook] no plan found for priceId: ${priceId}`);
               console.log(`[stripe webhook] env price IDs: starter=${process.env.STRIPE_STARTER_PRICE_ID}, pro=${process.env.STRIPE_PRO_PRICE_ID}, business=${process.env.STRIPE_BUSINESS_PRICE_ID}`);
@@ -111,9 +116,13 @@ export async function POST(request: Request) {
             : subscription.customer?.id;
 
         if (plan && customerId) {
+          const billingInterval =
+            subscription.items.data[0]?.price.recurring?.interval === "year"
+              ? "yearly"
+              : "monthly";
           await prisma.user.update({
             where: { stripeCustomerId: customerId },
-            data: { plan: plan.id },
+            data: { plan: plan.id, billingInterval },
           });
         }
         break;

@@ -16,11 +16,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Check } from "lucide-react";
 import { useUserStore } from "@/lib/store/user";
-import { plans } from "@/lib/plans";
+import { plans, type BillingInterval } from "@/lib/plans";
+import { BillingToggle } from "@/components/billing-toggle";
 
 export default function ChoosePlanPage() {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
+  const [interval, setInterval] = useState<BillingInterval>("monthly");
   const { user, fetched, fetchUser } = useUserStore();
 
   useEffect(() => {
@@ -43,7 +45,7 @@ export default function ChoosePlanPage() {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planId }),
+        body: JSON.stringify({ plan: planId, interval }),
       });
 
       const data = await res.json();
@@ -88,6 +90,9 @@ export default function ChoosePlanPage() {
             Select a plan to get started with ion7. You can upgrade or change
             your plan at any time.
           </p>
+          <div className="mt-6 flex justify-center">
+            <BillingToggle interval={interval} onChange={setInterval} />
+          </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
@@ -106,14 +111,27 @@ export default function ChoosePlanPage() {
                 </div>
               )}
               <CardHeader>
-                <div className="mb-1 text-sm font-medium text-primary">
-                  {plan.yearlyPrice}
-                </div>
+                {interval === "monthly" ? (
+                  <div className="mb-1 text-sm font-medium text-primary">
+                    {plan.yearlyPrice}
+                  </div>
+                ) : null}
                 <CardTitle>{plan.name}</CardTitle>
                 <CardDescription>{plan.description}</CardDescription>
                 <div className="mt-2">
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
+                  {interval === "monthly" ? (
+                    <>
+                      <span className="text-4xl font-bold">{plan.price}</span>
+                      <span className="text-muted-foreground">{plan.period}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-4xl font-bold">
+                        {plan.yearlyDisplayPrice}
+                      </span>
+                      <span className="text-muted-foreground"> /year</span>
+                    </>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
