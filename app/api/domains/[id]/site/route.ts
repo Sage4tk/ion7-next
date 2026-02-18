@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { assertAccountActive, AccountFrozenError } from "@/lib/account";
 import { presetFactories } from "@/lib/blocks/presets";
 import type { PresetType } from "@/lib/blocks/types";
 import type { InputJsonValue } from "@/lib/generated/prisma/internal/prismaNamespace";
@@ -42,6 +43,15 @@ export async function POST(
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
+  try {
+    await assertAccountActive(result.domain.userId);
+  } catch (e) {
+    if (e instanceof AccountFrozenError) {
+      return NextResponse.json({ error: e.message }, { status: 403 });
+    }
+    throw e;
+  }
+
   if (result.domain.site) {
     return NextResponse.json({ error: "Site already exists" }, { status: 409 });
   }
@@ -72,6 +82,15 @@ export async function PUT(
   const result = await getAuthedDomain(id);
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: result.status });
+  }
+
+  try {
+    await assertAccountActive(result.domain.userId);
+  } catch (e) {
+    if (e instanceof AccountFrozenError) {
+      return NextResponse.json({ error: e.message }, { status: 403 });
+    }
+    throw e;
   }
 
   if (!result.domain.site) {

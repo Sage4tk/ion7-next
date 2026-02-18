@@ -17,6 +17,7 @@ export async function GET() {
       plan: true,
       billingInterval: true,
       stripeCustomerId: true,
+      accountStatus: true,
       domains: {
         select: { id: true, name: true, status: true, expiresAt: true },
       },

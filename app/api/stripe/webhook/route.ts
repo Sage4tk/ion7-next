@@ -120,10 +120,46 @@ export async function POST(request: Request) {
             subscription.items.data[0]?.price.recurring?.interval === "year"
               ? "yearly"
               : "monthly";
+          const accountStatus =
+            subscription.status === "past_due" ? "frozen" : "active";
           await prisma.user.update({
             where: { stripeCustomerId: customerId },
-            data: { plan: plan.id, billingInterval },
+            data: { plan: plan.id, billingInterval, accountStatus },
           });
+        }
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId =
+          typeof invoice.customer === "string"
+            ? invoice.customer
+            : invoice.customer?.id;
+
+        if (customerId) {
+          await prisma.user.update({
+            where: { stripeCustomerId: customerId },
+            data: { accountStatus: "frozen" },
+          });
+          console.log(`[stripe webhook] froze account for customer ${customerId}`);
+        }
+        break;
+      }
+
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId =
+          typeof invoice.customer === "string"
+            ? invoice.customer
+            : invoice.customer?.id;
+
+        if (customerId) {
+          await prisma.user.update({
+            where: { stripeCustomerId: customerId },
+            data: { accountStatus: "active" },
+          });
+          console.log(`[stripe webhook] reactivated account for customer ${customerId}`);
         }
         break;
       }

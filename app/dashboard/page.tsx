@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { LogOut, CreditCard, Globe, Calendar, Settings } from "lucide-react";
+import { LogOut, CreditCard, Globe, Calendar, Settings, AlertTriangle } from "lucide-react";
 import { useUserStore } from "@/lib/store/user";
 
 export default function DashboardPage() {
@@ -88,7 +88,24 @@ export default function DashboardPage() {
         </div>
       </nav>
       <main className="mx-auto max-w-6xl px-6 py-12">
-        {user.domains.length === 0 ? (
+        {user.accountStatus === "frozen" ? (
+          <div className="flex flex-col items-center justify-center rounded-lg border border-destructive/50 bg-destructive/10 px-6 py-20 text-center">
+            <AlertTriangle className="mb-4 h-12 w-12 text-destructive" />
+            <h2 className="text-2xl font-bold">Your account is frozen</h2>
+            <p className="mt-2 max-w-md text-muted-foreground">
+              A recent payment failed. Please update your payment method to
+              restore access to your account.
+            </p>
+            <Button
+              className="mt-6"
+              onClick={handleManageSubscription}
+              disabled={portalLoading}
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              {portalLoading ? "Loading..." : "Update Payment Method"}
+            </Button>
+          </div>
+        ) : user.domains.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-border/50 bg-muted/30 px-6 py-20 text-center">
             <Globe className="mb-4 h-12 w-12 text-muted-foreground" />
             <h2 className="text-2xl font-bold">Buy a domain to get started</h2>

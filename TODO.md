@@ -4,3 +4,5 @@
 - upload page to s3 and direct the domain to it.
 - add domain transfer
 - test new stripe setup
+- add email storage left for each email
+- Freeze account if user's subscrition fails (Done)

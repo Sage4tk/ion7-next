@@ -21,8 +21,15 @@ export async function POST(request: Request) {
   // Verify user has an active plan
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { email: true, plan: true, stripeCustomerId: true },
+    select: { email: true, plan: true, stripeCustomerId: true, accountStatus: true },
   });
+
+  if (user?.accountStatus === "frozen") {
+    return NextResponse.json(
+      { error: "Account is frozen due to a failed payment" },
+      { status: 403 },
+    );
+  }
 
   if (!user?.plan) {
     return NextResponse.json(

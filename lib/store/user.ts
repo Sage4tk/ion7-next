@@ -14,6 +14,7 @@ export interface UserData {
   plan: string | null;
   billingInterval: string | null;
   stripeCustomerId: string | null;
+  accountStatus: string;
   domains: DomainData[];
 }
 

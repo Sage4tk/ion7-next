@@ -22,6 +22,7 @@ model User {
   billingInterval      String?  @default("monthly")
   stripeCustomerId     String?  @unique
   stripeSubscriptionId String?
+  accountStatus        String   @default("active")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   domains              Domain[]

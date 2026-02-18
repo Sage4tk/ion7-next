@@ -13,7 +13,9 @@
       "WebFetch(domain:docs.openprovider.com)",
       "WebFetch(domain:support.openprovider.eu)",
       "Bash(git push:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(xargs:*)"
     ]
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { assertAccountActive, AccountFrozenError } from "@/lib/account";
 import { createEmailAccount, deleteEmailAccount } from "@/lib/zoho";
 import { addZohoMxRecords } from "@/lib/openprovider";
 
@@ -48,6 +49,15 @@ export async function POST(
       { error: result.error },
       { status: result.status },
     );
+  }
+
+  try {
+    await assertAccountActive(result.domain.userId);
+  } catch (e) {
+    if (e instanceof AccountFrozenError) {
+      return NextResponse.json({ error: e.message }, { status: 403 });
+    }
+    throw e;
   }
 
   const { domain } = result;
@@ -133,6 +143,15 @@ export async function DELETE(
       { error: result.error },
       { status: result.status },
     );
+  }
+
+  try {
+    await assertAccountActive(result.domain.userId);
+  } catch (e) {
+    if (e instanceof AccountFrozenError) {
+      return NextResponse.json({ error: e.message }, { status: 403 });
+    }
+    throw e;
   }
 
   const { emailId } = (await req.json()) as { emailId: string };
