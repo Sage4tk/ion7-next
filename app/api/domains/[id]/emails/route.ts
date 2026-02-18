@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertAccountActive, AccountFrozenError } from "@/lib/account";
+import { planEmailLimits } from "@/lib/plans";
 import { createEmailAccount, deleteEmailAccount } from "@/lib/zoho";
 import { addZohoMxRecords } from "@/lib/openprovider";
-
-const MAX_EMAILS = 10;
 
 async function getAuthedDomain(domainId: string) {
   const session = await auth();
@@ -62,9 +61,16 @@ export async function POST(
 
   const { domain } = result;
 
-  if (domain.emails.length >= MAX_EMAILS) {
+  // Look up user's plan to enforce email limit
+  const owner = await prisma.user.findUnique({
+    where: { id: domain.userId },
+    select: { plan: true },
+  });
+  const maxEmails = planEmailLimits[owner?.plan ?? ""] ?? 0;
+
+  if (domain.emails.length >= maxEmails) {
     return NextResponse.json(
-      { error: `Maximum of ${MAX_EMAILS} emails reached` },
+      { error: `Your plan allows up to ${maxEmails} email accounts` },
       { status: 400 },
     );
   }

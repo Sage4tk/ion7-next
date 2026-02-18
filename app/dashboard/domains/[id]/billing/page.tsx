@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Sparkles,
   ArrowDown,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +33,12 @@ interface PreviewData {
   lines: { description: string; amount: number }[];
 }
 
+interface EmailLimitError {
+  message: string;
+  limit: number;
+  domains: { domain: string; emailCount: number }[];
+}
+
 const planOrder = ["basic", "pro", "business"];
 
 export default function BillingPage() {
@@ -43,6 +50,7 @@ export default function BillingPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [interval, setInterval] = useState<BillingInterval>("monthly");
+  const [emailLimitError, setEmailLimitError] = useState<EmailLimitError | null>(null);
 
   useEffect(() => {
     if (!fetched) fetchUser();
@@ -73,6 +81,15 @@ export default function BillingPage() {
 
       if (!res.ok) {
         const data = await res.json();
+        if (data.error === "EMAIL_LIMIT_EXCEEDED") {
+          setDialogOpen(false);
+          setEmailLimitError({
+            message: data.message,
+            limit: data.limit,
+            domains: data.domains,
+          });
+          return;
+        }
         toast.error(data.error || "Failed to load preview");
         setDialogOpen(false);
         return;
@@ -339,6 +356,43 @@ export default function BillingPage() {
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
               Confirm Change
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Email Limit Error Dialog */}
+      <Dialog open={emailLimitError !== null} onOpenChange={(open) => { if (!open) setEmailLimitError(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Cannot Downgrade Plan
+            </DialogTitle>
+            <DialogDescription>
+              {emailLimitError?.message}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Please remove emails from the following domains before downgrading:
+            </p>
+            {emailLimitError?.domains.map((d) => (
+              <div
+                key={d.domain}
+                className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-4 py-3"
+              >
+                <span className="text-sm font-medium">{d.domain}</span>
+                <span className="text-sm text-muted-foreground">
+                  {d.emailCount} / {emailLimitError.limit} emails
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailLimitError(null)}>
+              Got it
             </Button>
           </DialogFooter>
         </DialogContent>

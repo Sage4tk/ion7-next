@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
-import { getStripePriceId, getPlanById } from "@/lib/plans";
+import { getStripePriceId, getPlanById, planEmailLimits } from "@/lib/plans";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -27,7 +27,14 @@ export async function POST(request: Request) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { plan: true, stripeSubscriptionId: true, accountStatus: true },
+    select: {
+      plan: true,
+      stripeSubscriptionId: true,
+      accountStatus: true,
+      domains: {
+        select: { name: true, _count: { select: { emails: true } } },
+      },
+    },
   });
 
   if (user?.accountStatus === "frozen") {
@@ -47,6 +54,24 @@ export async function POST(request: Request) {
   if (user.plan === newPlan) {
     return NextResponse.json(
       { error: "Already on this plan" },
+      { status: 400 },
+    );
+  }
+
+  // Check if downgrade would exceed the target plan's email limit
+  const newEmailLimit = planEmailLimits[newPlan] ?? 0;
+  const overLimitDomains = user.domains
+    .filter((d) => d._count.emails > newEmailLimit)
+    .map((d) => ({ domain: d.name, emailCount: d._count.emails }));
+
+  if (overLimitDomains.length > 0) {
+    return NextResponse.json(
+      {
+        error: "EMAIL_LIMIT_EXCEEDED",
+        message: `The ${getPlanById(newPlan)!.name} plan allows up to ${newEmailLimit} email accounts per domain.`,
+        limit: newEmailLimit,
+        domains: overLimitDomains,
+      },
       { status: 400 },
     );
   }

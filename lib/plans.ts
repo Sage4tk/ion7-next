@@ -102,3 +102,10 @@ export function getPlanByPriceId(priceId: string) {
 export function getPlanById(id: string) {
   return plans.find((p) => p.id === id);
 }
+
+/** Maximum email accounts per plan */
+export const planEmailLimits: Record<string, number> = {
+  basic: 5,
+  pro: 10,
+  business: 50,
+};
