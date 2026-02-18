@@ -29,18 +29,21 @@ model User {
 }
 
 model Domain {
-  id             String    @id @default(cuid())
-  name           String    @unique
-  status         String    @default("pending") // pending, active, expired, transferred
-  openproviderId Int?
-  registeredAt   DateTime?
-  expiresAt      DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  userId         String
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  site           Site?
-  emails         Email[]
+  id                String    @id @default(cuid())
+  name              String    @unique
+  status            String    @default("pending") // pending, active, expired, transferred
+  openproviderId    Int?
+  registeredAt      DateTime?
+  expiresAt         DateTime?
+  deployedAt        DateTime?
+  cloudfrontDistId  String?
+  cloudfrontDomain  String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site              Site?
+  emails            Email[]
 
   @@index([userId])
 }

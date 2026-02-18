@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Loader2, ExternalLink } from "lucide-react";
+import { Loader2, ExternalLink, Rocket, Globe } from "lucide-react";
 import { PresetSelector } from "@/components/blocks/PresetSelector";
 import { PageBuilder } from "@/components/blocks/PageBuilder";
 import type { PresetType, SiteContent } from "@/lib/blocks/types";
@@ -22,12 +22,21 @@ interface DnsRecord {
   prio?: number;
 }
 
+interface DeployStatus {
+  deployed: boolean;
+  deployedAt: string | null;
+  url: string | null;
+}
+
 export default function DomainManagePage() {
   const { id } = useParams<{ id: string }>();
   const [site, setSite] = useState<Site | null | undefined>(undefined);
   const [records, setRecords] = useState<DnsRecord[]>([]);
   const [dnsLoading, setDnsLoading] = useState(true);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [deployStatus, setDeployStatus] = useState<DeployStatus | null>(null);
+  const [deploying, setDeploying] = useState(false);
+  const [deployError, setDeployError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchSite() {
@@ -58,8 +67,21 @@ export default function DomainManagePage() {
       }
     }
 
+    async function fetchDeployStatus() {
+      try {
+        const res = await fetch(`/api/domains/${id}/deploy`);
+        if (res.ok) {
+          const data = await res.json();
+          setDeployStatus(data);
+        }
+      } catch {
+        // Deploy status is non-critical
+      }
+    }
+
     fetchSite();
     fetchDns();
+    fetchDeployStatus();
   }, [id]);
 
   const handleSelectPreset = useCallback(async (preset: PresetType) => {
@@ -84,6 +106,30 @@ export default function DomainManagePage() {
     setSite(data.site);
     setSaveMessage("Saved successfully!");
     setTimeout(() => setSaveMessage(null), 3000);
+  }, [id]);
+
+  const handleDeploy = useCallback(async () => {
+    setDeploying(true);
+    setDeployError(null);
+    try {
+      const res = await fetch(`/api/domains/${id}/deploy`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDeployError(data.error || "Deployment failed");
+        return;
+      }
+      setDeployStatus({
+        deployed: true,
+        deployedAt: data.deployedAt,
+        url: data.url,
+      });
+    } catch {
+      setDeployError("Deployment failed. Please try again.");
+    } finally {
+      setDeploying(false);
+    }
   }, [id]);
 
   return (
@@ -115,8 +161,52 @@ export default function DomainManagePage() {
                   <ExternalLink className="h-4 w-4" />
                   Preview
                 </Button>
+                <Button
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleDeploy}
+                  disabled={deploying}
+                >
+                  {deploying ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Rocket className="h-4 w-4" />
+                  )}
+                  {deploying ? "Publishing..." : "Publish"}
+                </Button>
               </div>
             </div>
+
+            {/* Deploy status */}
+            {deployError && (
+              <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400">
+                {deployError}
+              </div>
+            )}
+            {deployStatus && (
+              <div className="mt-3 flex items-center gap-3 text-sm text-muted-foreground">
+                <Globe className="h-4 w-4" />
+                {deployStatus.deployed ? (
+                  <>
+                    <span>
+                      Last published:{" "}
+                      {new Date(deployStatus.deployedAt!).toLocaleString()}
+                    </span>
+                    <a
+                      href={deployStatus.url!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {deployStatus.url}
+                    </a>
+                  </>
+                ) : (
+                  <span>Not published yet</span>
+                )}
+              </div>
+            )}
+
             <div className="mt-4">
               <PageBuilder
                 content={site.content}

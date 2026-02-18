@@ -180,6 +180,40 @@ export async function addZohoMxRecords(domainName: string): Promise<void> {
   });
 }
 
+export async function setDomainCname(
+  domainName: string,
+  target: string,
+): Promise<void> {
+  const existing = await listDnsRecords(domainName);
+
+  // Check if CNAME for www already points to the right target
+  const hasCorrectCname = existing.some(
+    (r) => r.type === "CNAME" && r.name === "www" && r.value === target,
+  );
+  if (hasCorrectCname) return;
+
+  // Remove any existing www CNAME, keep everything else
+  const filtered = existing.filter(
+    (r) => !(r.type === "CNAME" && r.name === "www"),
+  );
+
+  const records = [
+    ...filtered.map((r) => ({
+      type: r.type,
+      name: r.name,
+      value: r.value,
+      ttl: r.ttl,
+      prio: r.prio ?? 0,
+    })),
+    { type: "CNAME", name: "www", value: target, ttl: 3600, prio: 0 },
+  ];
+
+  await apiPut(`/dns/zones/${domainName}`, {
+    name: domainName,
+    records: { records },
+  });
+}
+
 export async function registerDomain(
   name: string,
   extension: string,
