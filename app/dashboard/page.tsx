@@ -23,6 +23,8 @@ export default function DashboardPage() {
       router.replace("/login");
     } else if (!user.plan) {
       router.replace("/choose-plan");
+    } else if (user.accountStatus !== "frozen" && user.domains.length === 1) {
+      router.replace(`/dashboard/domains/${user.domains[0].id}`);
     }
   }, [user, fetched, router]);
 
@@ -35,6 +37,8 @@ export default function DashboardPage() {
   }
 
   if (!user || !user.plan) return null;
+
+  if (user.accountStatus !== "frozen" && user.domains.length === 1) return null;
 
   function handleLogout() {
     clear();

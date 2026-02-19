@@ -24,6 +24,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: "Payment not completed" }, { status: 400 });
   }
 
+  // Domain registration payment
+  if (checkoutSession.mode === "payment") {
+    const { domain_name, domain_extension } = checkoutSession.metadata ?? {};
+    const domainName = domain_name && domain_extension ? `${domain_name}.${domain_extension}` : null;
+    return NextResponse.json({ success: true, domainName });
+  }
+
   const subscription = checkoutSession.subscription as import("stripe").Stripe.Subscription;
   const priceId = subscription?.items?.data[0]?.price.id;
   const plan = priceId ? getPlanByPriceId(priceId) : undefined;

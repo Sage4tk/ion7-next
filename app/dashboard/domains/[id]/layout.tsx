@@ -2,9 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Globe, Calendar, Loader2, Mail, LayoutDashboard, CreditCard } from "lucide-react";
+import {
+  ArrowLeft,
+  Globe,
+  Calendar,
+  Loader2,
+  Mail,
+  LayoutDashboard,
+  CreditCard,
+  LogOut,
+} from "lucide-react";
 import Link from "next/link";
+import { useUserStore } from "@/lib/store/user";
 
 interface Domain {
   id: string;
@@ -29,6 +40,13 @@ export default function DomainLayout({
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const pathname = usePathname();
+  const { user, clear } = useUserStore();
+  const hasMultipleDomains = (user?.domains?.length ?? 0) > 1;
+
+  function handleLogout() {
+    clear();
+    signOut({ callbackUrl: "/" });
+  }
   const [domain, setDomain] = useState<Domain | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +56,9 @@ export default function DomainLayout({
       try {
         const res = await fetch(`/api/domains/${id}`);
         if (!res.ok) {
-          setError(res.status === 404 ? "Domain not found" : "Failed to load domain");
+          setError(
+            res.status === 404 ? "Domain not found" : "Failed to load domain",
+          );
           return;
         }
         const data = await res.json();
@@ -78,25 +98,60 @@ export default function DomainLayout({
   const isDashboardTab = !isWebsiteTab && !isEmailsTab && !isBillingTab;
 
   const tabs = [
-    { label: "Dashboard", href: basePath, icon: LayoutDashboard, active: isDashboardTab },
-    { label: "Website", href: `${basePath}/website`, icon: Globe, active: isWebsiteTab },
-    { label: "Emails", href: `${basePath}/emails`, icon: Mail, active: isEmailsTab },
-    { label: "Billing", href: `${basePath}/billing`, icon: CreditCard, active: isBillingTab },
+    {
+      label: "Dashboard",
+      href: basePath,
+      icon: LayoutDashboard,
+      active: isDashboardTab,
+    },
+    {
+      label: "Website",
+      href: `${basePath}/website`,
+      icon: Globe,
+      active: isWebsiteTab,
+    },
+    {
+      label: "Emails",
+      href: `${basePath}/emails`,
+      icon: Mail,
+      active: isEmailsTab,
+    },
+    {
+      label: "Billing",
+      href: `${basePath}/billing`,
+      icon: CreditCard,
+      active: isBillingTab,
+    },
   ];
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">
       <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 sm:h-16 max-w-6xl items-center px-4 sm:px-6">
+        <div className="mx-auto flex h-14 sm:h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+          {hasMultipleDomains ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2"
+              onClick={() => router.push("/dashboard")}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Back to Dashboard</span>
+              <span className="sm:hidden">Back</span>
+            </Button>
+          ) : (
+            <span className="text-xl font-bold tracking-tight">
+              ion<span className="text-primary">7</span>
+            </span>
+          )}
           <Button
             variant="ghost"
             size="sm"
-            className="gap-2"
-            onClick={() => router.push("/dashboard")}
+            onClick={handleLogout}
+            className="gap-2 flex flex-row items-center"
           >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Back to Dashboard</span>
-            <span className="sm:hidden">Back</span>
+            <LogOut className="h-4 w-4 " />
+            <span className="hidden sm:inline">Logout</span>
           </Button>
         </div>
       </nav>
@@ -106,7 +161,9 @@ export default function DomainLayout({
         <div className="rounded-lg border border-border/50 bg-muted/30 p-4 sm:p-6">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Globe className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-            <h1 className="text-lg sm:text-2xl font-bold break-all">{domain.name}</h1>
+            <h1 className="text-lg sm:text-2xl font-bold break-all">
+              {domain.name}
+            </h1>
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${statusColor[domain.status] || "bg-muted text-muted-foreground"}`}
             >
@@ -119,7 +176,8 @@ export default function DomainLayout({
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4 shrink-0" />
                 <span>
-                  Registered {new Date(domain.registeredAt).toLocaleDateString()}
+                  Registered{" "}
+                  {new Date(domain.registeredAt).toLocaleDateString()}
                 </span>
               </div>
             )}

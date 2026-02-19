@@ -1,19 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle } from "lucide-react";
-import { useUserStore } from "@/lib/store/user";
 
 export default function DomainRegistrationSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
-  const { fetchUser } = useUserStore();
-  const [verified, setVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!sessionId) {
@@ -21,73 +16,68 @@ export default function DomainRegistrationSuccessPage() {
       return;
     }
 
-    async function verify() {
+    async function verifyAndRedirect() {
       try {
         const res = await fetch(
           `/api/stripe/checkout/verify?session_id=${sessionId}`,
         );
         const data = await res.json();
 
-        if (data.success) {
-          setVerified(true);
-          await fetchUser();
-        } else {
+        if (!data.success || !data.domainName) {
           setError("Payment verification failed. Please contact support.");
+          return;
         }
+
+        // Poll for the domain to be created by the webhook
+        pollingRef.current = setInterval(async () => {
+          try {
+            const domainRes = await fetch(
+              `/api/domains?name=${encodeURIComponent(data.domainName)}`,
+            );
+            const domainData = await domainRes.json();
+
+            if (domainData.domain?.id) {
+              if (pollingRef.current) clearInterval(pollingRef.current);
+              router.replace(`/dashboard/domains/${domainData.domain.id}`);
+            }
+          } catch {
+            // keep polling
+          }
+        }, 2000);
       } catch {
         setError("Something went wrong. Please contact support.");
       }
     }
 
-    verify();
-  }, [sessionId, router, fetchUser]);
+    verifyAndRedirect();
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [sessionId, router]);
 
   if (error) {
     return (
       <div className="dark flex min-h-screen items-center justify-center bg-background text-foreground">
-        <Card className="mx-auto max-w-md">
-          <CardContent className="pt-6 text-center">
-            <p className="text-destructive">{error}</p>
-            <Button
-              className="mt-4"
-              onClick={() => router.push("/dashboard/domains/search")}
-            >
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!verified) {
-    return (
-      <div className="dark flex min-h-screen items-center justify-center bg-background text-foreground">
-        <p className="text-muted-foreground">Verifying payment...</p>
+        <div className="text-center space-y-4">
+          <p className="text-destructive">{error}</p>
+          <button
+            className="text-sm text-muted-foreground underline"
+            onClick={() => router.push("/dashboard/domains/search")}
+          >
+            Back to search
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="dark flex min-h-screen items-center justify-center bg-background text-foreground">
-      <Card className="mx-auto max-w-md">
-        <CardHeader className="text-center">
-          <CheckCircle className="mx-auto mb-4 h-16 w-16 text-green-500" />
-          <CardTitle className="text-2xl">Domain Registered!</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center">
-          <p className="mb-6 text-muted-foreground">
-            Your domain has been registered successfully. It may take a few
-            minutes to appear in your dashboard.
-          </p>
-          <Button
-            className="w-full"
-            onClick={() => router.push("/dashboard")}
-          >
-            Go to Dashboard
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="text-center space-y-3">
+        <p className="text-muted-foreground">Setting up your domain…</p>
+        <p className="text-xs text-muted-foreground/60">This may take a few seconds.</p>
+      </div>
     </div>
   );
 }
