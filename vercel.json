@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/renew-domains",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/sync-transfers",
+      "schedule": "0 */6 * * *"
     }
   ]
 }

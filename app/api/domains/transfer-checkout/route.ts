@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
-import { checkDomains } from "@/lib/openprovider";
+import { checkDomains, transferDomain } from "@/lib/openprovider";
 import { calcChargeAmountAed } from "@/lib/domain-credit";
 
 export async function POST(request: Request) {
@@ -84,6 +84,28 @@ export async function POST(request: Request) {
   }
 
   const chargeAmountAed = calcChargeAmountAed(domainResult.price);
+
+  // Transfer is fully covered by the 50 AED credit — skip Stripe
+  if (chargeAmountAed <= 0) {
+    try {
+      const result = await transferDomain(name, extension, authCode);
+      await prisma.domain.create({
+        data: {
+          name: fullDomain,
+          status: "pending",
+          openproviderId: result.id,
+          userId: session.user.id,
+        },
+      });
+      return NextResponse.json({ free: true, domainName: fullDomain });
+    } catch (err) {
+      console.error("[transfer-checkout] free transfer failed:", err);
+      return NextResponse.json(
+        { error: "Failed to initiate domain transfer. Please try again." },
+        { status: 500 },
+      );
+    }
+  }
 
   const checkoutSession = await stripe.checkout.sessions.create({
     customer: customerId,

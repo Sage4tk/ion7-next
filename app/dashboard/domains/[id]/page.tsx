@@ -14,6 +14,7 @@ import {
   AlertCircle,
   RefreshCw,
   Gift,
+  Clock,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -216,6 +217,31 @@ export default function DomainDashboardPage() {
             </Button>
           </div>
         )
+      )}
+
+      {/* Pending transfer banner */}
+      {domain?.status === "pending" && (
+        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-5 py-4 flex items-center gap-3">
+          <Clock className="h-4 w-4 text-blue-400 shrink-0" />
+          <div>
+            <p className="font-semibold text-blue-400">Transfer in progress</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Domain transfers typically take 5–7 days. This page will update automatically once the transfer completes.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {domain?.status === "failed" && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-5 py-4 flex items-center gap-3">
+          <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+          <div>
+            <p className="font-semibold text-destructive">Transfer failed</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              The domain transfer was rejected. This usually means the auth code was wrong, the domain was locked, or the 60-day lock period applied. Please contact support.
+            </p>
+          </div>
+        </div>
       )}
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">

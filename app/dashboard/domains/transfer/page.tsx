@@ -45,6 +45,13 @@ export default function DomainTransferPage() {
         return;
       }
 
+      if (data.free) {
+        router.push(
+          `/dashboard/domains/transfer-success?domain=${encodeURIComponent(data.domainName)}`,
+        );
+        return;
+      }
+
       window.location.href = data.url;
     } catch {
       toast.error("Something went wrong");

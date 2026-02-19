@@ -30,6 +30,7 @@ const statusColor: Record<string, string> = {
   pending: "bg-yellow-500/20 text-yellow-400",
   expired: "bg-red-500/20 text-red-400",
   transferred: "bg-blue-500/20 text-blue-400",
+  failed: "bg-destructive/20 text-destructive",
 };
 
 export default function DomainLayout({
@@ -110,30 +111,36 @@ export default function DomainLayout({
   const isBillingTab = pathname.startsWith(`${basePath}/billing`);
   const isDashboardTab = !isWebsiteTab && !isEmailsTab && !isBillingTab;
 
+  const domainActive = domain.status === "active";
+
   const tabs = [
     {
       label: "Dashboard",
       href: basePath,
       icon: LayoutDashboard,
       active: isDashboardTab,
+      disabled: false,
     },
     {
       label: "Website",
       href: `${basePath}/website`,
       icon: Globe,
       active: isWebsiteTab,
+      disabled: !domainActive,
     },
     {
       label: "Emails",
       href: `${basePath}/emails`,
       icon: Mail,
       active: isEmailsTab,
+      disabled: !domainActive,
     },
     {
       label: "Billing",
       href: `${basePath}/billing`,
       icon: CreditCard,
       active: isBillingTab,
+      disabled: false,
     },
   ];
 
@@ -208,32 +215,21 @@ export default function DomainLayout({
         {/* Mobile Tab Bar */}
         <div className="mt-4 overflow-x-auto md:hidden">
           <nav className="flex gap-1 rounded-lg border border-border/50 bg-muted/30 p-1">
-            {tabs.map((tab) => (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                  tab.active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                }`}
-              >
-                <tab.icon className="h-4 w-4" />
-                {tab.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        {/* Sidebar + Content */}
-        <div className="mt-4 sm:mt-8 flex gap-8">
-          <aside className="hidden md:block w-48 shrink-0">
-            <nav className="flex flex-col gap-1">
-              {tabs.map((tab) => (
+            {tabs.map((tab) =>
+              tab.disabled ? (
+                <span
+                  key={tab.href}
+                  title="Available once transfer completes"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap cursor-not-allowed opacity-40 text-muted-foreground"
+                >
+                  <tab.icon className="h-4 w-4" />
+                  {tab.label}
+                </span>
+              ) : (
                 <Link
                   key={tab.href}
                   href={tab.href}
-                  className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                     tab.active
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -242,7 +238,40 @@ export default function DomainLayout({
                   <tab.icon className="h-4 w-4" />
                   {tab.label}
                 </Link>
-              ))}
+              ),
+            )}
+          </nav>
+        </div>
+
+        {/* Sidebar + Content */}
+        <div className="mt-4 sm:mt-8 flex gap-8">
+          <aside className="hidden md:block w-48 shrink-0">
+            <nav className="flex flex-col gap-1">
+              {tabs.map((tab) =>
+                tab.disabled ? (
+                  <span
+                    key={tab.href}
+                    title="Available once transfer completes"
+                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium cursor-not-allowed opacity-40 text-muted-foreground"
+                  >
+                    <tab.icon className="h-4 w-4" />
+                    {tab.label}
+                  </span>
+                ) : (
+                  <Link
+                    key={tab.href}
+                    href={tab.href}
+                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                      tab.active
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    }`}
+                  >
+                    <tab.icon className="h-4 w-4" />
+                    {tab.label}
+                  </Link>
+                ),
+              )}
             </nav>
           </aside>
 

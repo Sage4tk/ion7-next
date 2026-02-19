@@ -253,6 +253,24 @@ export async function renewDomain(openproviderId: number): Promise<void> {
   }
 }
 
+export async function getDomainStatus(openproviderId: number): Promise<{
+  status: string; // 'ACT' | 'REQ' | 'SCH' | 'FAI' | 'DEL'
+  expiresAt?: Date;
+} | null> {
+  try {
+    const json = await apiGet(`/domains/${openproviderId}`);
+    const domain = json.data;
+    return {
+      status: domain.status,
+      expiresAt: domain.expiration_date
+        ? new Date(domain.expiration_date)
+        : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function transferDomain(
   name: string,
   extension: string,

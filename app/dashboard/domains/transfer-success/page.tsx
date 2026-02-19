@@ -9,12 +9,21 @@ export default function DomainTransferSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
+  const freeDomain = searchParams.get("domain"); // set for credit-covered transfers
   const [error, setError] = useState<string | null>(null);
   const [domainName, setDomainName] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    // Free transfer — domain already created, show success immediately
+    if (freeDomain) {
+      setDomainName(freeDomain);
+      setReady(true);
+      return;
+    }
+
+    // Paid transfer — verify Stripe session then poll for domain record
     if (!sessionId) {
       router.replace("/dashboard/domains/transfer");
       return;
@@ -58,7 +67,7 @@ export default function DomainTransferSuccessPage() {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [sessionId, router]);
+  }, [sessionId, freeDomain, router]);
 
   if (error) {
     return (
