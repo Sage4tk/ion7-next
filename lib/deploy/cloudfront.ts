@@ -3,6 +3,7 @@ import {
   CreateDistributionCommand,
   CreateInvalidationCommand,
   GetDistributionCommand,
+  UpdateDistributionCommand,
 } from "@aws-sdk/client-cloudfront";
 import {
   ACMClient,
@@ -141,6 +142,22 @@ export async function ensureDistribution(
     cloudfrontDomain: result.Distribution!.DomainName!,
     certArn,
   };
+}
+
+export async function disableDistribution(distributionId: string): Promise<void> {
+  const result = await cf.send(new GetDistributionCommand({ Id: distributionId }));
+  const config = result.Distribution?.DistributionConfig;
+  const etag = result.ETag;
+
+  if (!config || !etag || config.Enabled === false) return; // Already disabled
+
+  await cf.send(
+    new UpdateDistributionCommand({
+      Id: distributionId,
+      IfMatch: etag,
+      DistributionConfig: { ...config, Enabled: false },
+    }),
+  );
 }
 
 export async function invalidateCache(

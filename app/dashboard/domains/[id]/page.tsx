@@ -51,6 +51,7 @@ export default function DomainDashboardPage() {
   const [site, setSite] = useState<SiteInfo | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [renewing, setRenewing] = useState(false);
+  const [renewalInfo, setRenewalInfo] = useState<{ isFree: boolean; chargeAmountAed: number } | null>(null);
 
   useEffect(() => {
     if (!fetched) fetchUser();
@@ -67,6 +68,19 @@ export default function DomainDashboardPage() {
         if (domainRes.ok) {
           const data = await domainRes.json();
           setDomain(data.domain);
+
+          // Fetch renewal price if expiry is within 60 days
+          const expiry = data.domain?.expiresAt ? new Date(data.domain.expiresAt) : null;
+          const daysLeft = expiry ? Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+          if (data.domain?.status === "active" && daysLeft !== null && daysLeft <= 60) {
+            try {
+              const renewRes = await fetch(`/api/domains/${id}/renew`);
+              if (renewRes.ok) {
+                const renewData = await renewRes.json();
+                setRenewalInfo({ isFree: renewData.isFree, chargeAmountAed: renewData.chargeAmountAed });
+              }
+            } catch { /* non-critical, ignore */ }
+          }
         }
 
         if (siteRes.ok) {
@@ -99,7 +113,7 @@ export default function DomainDashboardPage() {
   const daysUntilExpiry = domain ? getDaysUntilExpiry(domain.expiresAt) : null;
   const isExpired = daysUntilExpiry !== null && daysUntilExpiry <= 0;
   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry > 0 && daysUntilExpiry <= 60;
-  const showRenewalCard = domain?.status === "active" && (isExpired || isExpiringSoon);
+  const showRenewalBanner = domain?.status === "active" && (isExpired || isExpiringSoon) && renewalInfo !== null;
 
   async function handleRenew() {
     setRenewing(true);
@@ -152,40 +166,56 @@ export default function DomainDashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Renewal warning banner */}
-      {showRenewalCard && (
-        <div
-          className={`rounded-lg border px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-            isExpired
-              ? "border-destructive/50 bg-destructive/10"
-              : "border-yellow-500/30 bg-yellow-500/10"
-          }`}
-        >
-          <div>
-            <p className={`font-semibold ${isExpired ? "text-destructive" : "text-yellow-400"}`}>
-              {isExpired
-                ? "Your domain has expired"
-                : `Your domain expires in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? "" : "s"}`}
-            </p>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Renew now — up to AED {DOMAIN_CREDIT_AED} covered by your credit.
-            </p>
+      {/* Renewal banner */}
+      {showRenewalBanner && (
+        renewalInfo!.isFree ? (
+          // Within the 50 AED credit — cron will auto-renew, just inform the user
+          <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-5 py-4 flex items-center gap-3">
+            <RefreshCw className="h-4 w-4 text-green-400 shrink-0" />
+            <div>
+              <p className="font-semibold text-green-400">
+                {isExpired ? "Domain expired — auto-renewal pending" : `Auto-renewing in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? "" : "s"}`}
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Your 50 AED credit covers this renewal — no action needed.
+              </p>
+            </div>
           </div>
-          <Button
-            size="sm"
-            onClick={handleRenew}
-            disabled={renewing}
-            variant={isExpired ? "destructive" : "default"}
-            className="shrink-0"
+        ) : (
+          // Exceeds the credit — user must pay the difference
+          <div
+            className={`rounded-lg border px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+              isExpired
+                ? "border-destructive/50 bg-destructive/10"
+                : "border-yellow-500/30 bg-yellow-500/10"
+            }`}
           >
-            {renewing ? (
-              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 h-3.5 w-3.5" />
-            )}
-            {renewing ? "Renewing…" : "Renew Domain"}
-          </Button>
-        </div>
+            <div>
+              <p className={`font-semibold ${isExpired ? "text-destructive" : "text-yellow-400"}`}>
+                {isExpired
+                  ? "Your domain has expired"
+                  : `Your domain expires in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? "" : "s"}`}
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                This domain exceeds the 50 AED credit. Pay AED {renewalInfo!.chargeAmountAed.toFixed(2)} to renew for another year.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={handleRenew}
+              disabled={renewing}
+              variant={isExpired ? "destructive" : "default"}
+              className="shrink-0"
+            >
+              {renewing ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-3.5 w-3.5" />
+              )}
+              {renewing ? "Redirecting…" : `Pay AED ${renewalInfo!.chargeAmountAed.toFixed(2)}`}
+            </Button>
+          </div>
+        )
       )}
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">

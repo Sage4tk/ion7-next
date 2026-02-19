@@ -40,8 +40,21 @@ export default function DomainLayout({
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const pathname = usePathname();
-  const { user, clear } = useUserStore();
+  const { user, fetched, fetchUser, clear } = useUserStore();
   const hasMultipleDomains = (user?.domains?.length ?? 0) > 1;
+
+  useEffect(() => {
+    if (!fetched) fetchUser();
+  }, [fetched, fetchUser]);
+
+  useEffect(() => {
+    if (!fetched) return;
+    if (!user) {
+      router.replace("/login");
+    } else if (!user.plan) {
+      router.replace("/choose-plan");
+    }
+  }, [user, fetched, router]);
 
   function handleLogout() {
     clear();

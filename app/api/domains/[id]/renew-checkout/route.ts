@@ -29,7 +29,14 @@ export async function POST(
     select: { email: true, plan: true, stripeCustomerId: true, accountStatus: true },
   });
 
-  if (user?.accountStatus === "frozen") {
+  if (!user?.plan) {
+    return NextResponse.json(
+      { error: "You need an active plan to renew domains" },
+      { status: 403 },
+    );
+  }
+
+  if (user.accountStatus === "frozen") {
     return NextResponse.json(
       { error: "Account is frozen due to a failed payment" },
       { status: 403 },

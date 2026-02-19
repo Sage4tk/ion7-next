@@ -12,6 +12,7 @@ import {
   Sparkles,
   ArrowDown,
   AlertTriangle,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +52,9 @@ export default function BillingPage() {
   const [updating, setUpdating] = useState(false);
   const [interval, setInterval] = useState<BillingInterval>("monthly");
   const [emailLimitError, setEmailLimitError] = useState<EmailLimitError | null>(null);
+  const [cancelStatus, setCancelStatus] = useState<{ cancelAtPeriodEnd: boolean; currentPeriodEnd: number } | null>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (!fetched) fetchUser();
@@ -61,6 +65,16 @@ export default function BillingPage() {
       setInterval(user.billingInterval);
     }
   }, [user?.billingInterval]);
+
+  useEffect(() => {
+    if (!user?.plan) return;
+    fetch("/api/stripe/subscription/cancel")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.cancelAtPeriodEnd !== undefined) setCancelStatus(data);
+      })
+      .catch(() => {});
+  }, [user?.plan]);
 
   const currentPlanId = user?.plan ?? null;
   const currentInterval = (user?.billingInterval ?? "monthly") as BillingInterval;
@@ -137,6 +151,29 @@ export default function BillingPage() {
       currency: currency.toUpperCase(),
       minimumFractionDigits: 2,
     }).format(amount / 100);
+  };
+
+  const handleCancelToggle = async (undo: boolean) => {
+    setCancelling(true);
+    try {
+      const res = await fetch("/api/stripe/subscription/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ undo }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to update cancellation");
+        return;
+      }
+      setCancelStatus({ cancelAtPeriodEnd: data.cancelAtPeriodEnd, currentPeriodEnd: data.currentPeriodEnd });
+      setCancelDialogOpen(false);
+      toast.success(undo ? "Cancellation reversed — your plan remains active." : "Cancellation scheduled.");
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setCancelling(false);
+    }
   };
 
   const isUpgrade = (planId: string) => {
@@ -360,6 +397,106 @@ export default function BillingPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Cancel Plan Section */}
+      {currentPlanId && (
+        <div className="rounded-lg border border-border/50 bg-muted/30 p-4 sm:p-6">
+          <h3 className="font-semibold text-base">Cancel Plan</h3>
+
+          {cancelStatus?.cancelAtPeriodEnd ? (
+            <div className="mt-3 space-y-3">
+              <div className="flex items-start gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-yellow-400" />
+                <div className="text-sm">
+                  <p className="font-medium text-yellow-400">Cancellation scheduled</p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    Your plan will end on{" "}
+                    <strong className="text-foreground">
+                      {new Date(cancelStatus.currentPeriodEnd * 1000).toLocaleDateString()}
+                    </strong>
+                    . After that, your website will go offline and email accounts will be deleted.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleCancelToggle(true)}
+                disabled={cancelling}
+              >
+                {cancelling && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                Keep My Plan
+              </Button>
+            </div>
+          ) : (
+            <div className="mt-3 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Your plan will remain active until the end of the current billing period. After that, your website will go offline and all email accounts will be deleted.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive border-destructive/50 hover:bg-destructive/10"
+                onClick={() => setCancelDialogOpen(true)}
+              >
+                <XCircle className="mr-2 h-3.5 w-3.5" />
+                Cancel Plan
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-destructive" />
+              Cancel Your Plan?
+            </DialogTitle>
+            <DialogDescription>
+              Your plan stays active until the end of the billing period. After that:
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li className="flex items-start gap-2">
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
+              Your website will be taken offline
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
+              All email accounts will be permanently deleted
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
+              Your domain will no longer auto-renew
+            </li>
+          </ul>
+          {cancelStatus && (
+            <p className="text-sm text-muted-foreground">
+              Access ends on{" "}
+              <strong className="text-foreground">
+                {new Date(cancelStatus.currentPeriodEnd * 1000).toLocaleDateString()}
+              </strong>
+              .
+            </p>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)} disabled={cancelling}>
+              Keep My Plan
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleCancelToggle(false)}
+              disabled={cancelling}
+            >
+              {cancelling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Yes, Cancel Plan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Email Limit Error Dialog */}
       <Dialog open={emailLimitError !== null} onOpenChange={(open) => { if (!open) setEmailLimitError(null); }}>
         <DialogContent className="sm:max-w-md">

@@ -3,6 +3,8 @@ import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { getPlanByPriceId } from "@/lib/plans";
 import { registerDomain, transferDomain, renewDomain } from "@/lib/openprovider";
+import { deleteEmailAccount } from "@/lib/zoho";
+import { disableDistribution } from "@/lib/deploy/cloudfront";
 import type Stripe from "stripe";
 
 export async function POST(request: Request) {
@@ -207,10 +209,45 @@ export async function POST(request: Request) {
             : subscription.customer?.id;
 
         if (customerId) {
+          const user = await prisma.user.findUnique({
+            where: { stripeCustomerId: customerId },
+            include: { domains: { include: { emails: true } } },
+          });
+
+          if (user) {
+            for (const domain of user.domains) {
+              // Disable CloudFront distribution (take website offline)
+              if (domain.cloudfrontDistId) {
+                try {
+                  await disableDistribution(domain.cloudfrontDistId);
+                  console.log(`[stripe webhook] disabled CloudFront for ${domain.name}`);
+                } catch (err) {
+                  console.error(`[stripe webhook] CloudFront disable failed for ${domain.name}:`, err);
+                }
+              }
+
+              // Delete Zoho email accounts
+              for (const email of domain.emails) {
+                try {
+                  await deleteEmailAccount(email.address);
+                } catch (err) {
+                  console.error(`[stripe webhook] Zoho delete failed for ${email.address}:`, err);
+                }
+              }
+
+              // Delete email records from DB
+              if (domain.emails.length > 0) {
+                await prisma.email.deleteMany({ where: { domainId: domain.id } });
+              }
+            }
+          }
+
           await prisma.user.update({
             where: { stripeCustomerId: customerId },
             data: { plan: null, stripeSubscriptionId: null },
           });
+
+          console.log(`[stripe webhook] cleaned up account for customer ${customerId}`);
         }
         break;
       }
