@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { LogOut, CreditCard, Globe, Calendar, Settings, AlertTriangle } from "lucide-react";
+import { LogOut, CreditCard, Globe, Calendar, Settings, AlertTriangle, Search, ArrowRightLeft } from "lucide-react";
 import { useUserStore } from "@/lib/store/user";
 
 export default function DashboardPage() {
@@ -112,14 +112,24 @@ export default function DashboardPage() {
         ) : user.domains.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-border/50 bg-muted/30 px-6 py-20 text-center">
             <Globe className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h2 className="text-2xl font-bold">Buy a domain to get started</h2>
+            <h2 className="text-2xl font-bold">Get started with a domain</h2>
             <p className="mt-2 max-w-md text-muted-foreground">
-              You need a domain to start building your website. Search for your
-              perfect domain and register it in seconds.
+              Register a new domain or transfer an existing one from your current
+              registrar to get started.
             </p>
-            <Button className="mt-6" onClick={() => router.push("/dashboard/domains/search")}>
-              Search for a Domain
-            </Button>
+            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+              <Button onClick={() => router.push("/dashboard/domains/search")}>
+                <Search className="mr-2 h-4 w-4" />
+                Search for a Domain
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push("/dashboard/domains/transfer")}
+              >
+                <ArrowRightLeft className="mr-2 h-4 w-4" />
+                Transfer a Domain
+              </Button>
+            </div>
           </div>
         ) : (
           <div>

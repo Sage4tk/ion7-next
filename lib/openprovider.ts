@@ -233,3 +233,24 @@ export async function registerDomain(
 
   return { id: json.data.id };
 }
+
+export async function transferDomain(
+  name: string,
+  extension: string,
+  authCode: string,
+): Promise<{ id: number }> {
+  const handle = process.env.OPENPROVIDER_HANDLE;
+
+  const json = await apiRequest("/domains/transfer", {
+    domain: { name, extension },
+    auth_code: authCode,
+    owner_handle: handle,
+    admin_handle: handle,
+    tech_handle: handle,
+    billing_handle: handle,
+    ns_group: "dns-openprovider",
+    autorenew: "default",
+  });
+
+  return { id: json.data.id };
+}

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { getPlanByPriceId } from "@/lib/plans";
-import { registerDomain } from "@/lib/openprovider";
+import { registerDomain, transferDomain } from "@/lib/openprovider";
 import type Stripe from "stripe";
 
 export async function POST(request: Request) {
@@ -33,34 +33,47 @@ export async function POST(request: Request) {
         const session = event.data.object as Stripe.Checkout.Session;
 
         if (session.mode === "payment") {
-          // Domain registration payment
-          const { domain_name, domain_extension, userId } =
+          const { type, domain_name, domain_extension, auth_code, userId } =
             session.metadata ?? {};
 
           console.log(
-            `[stripe webhook] domain payment: ${domain_name}.${domain_extension} for user ${userId}`,
+            `[stripe webhook] domain ${type ?? "registration"} payment: ${domain_name}.${domain_extension} for user ${userId}`,
           );
 
           if (domain_name && domain_extension && userId) {
-            const result = await registerDomain(domain_name, domain_extension);
             const fullDomain = `${domain_name}.${domain_extension}`;
 
-            await prisma.domain.create({
-              data: {
-                name: fullDomain,
-                status: "active",
-                openproviderId: result.id,
-                registeredAt: new Date(),
-                expiresAt: new Date(
-                  Date.now() + 365 * 24 * 60 * 60 * 1000,
-                ),
-                userId,
-              },
-            });
+            if (type === "transfer") {
+              // Domain transfer payment — initiate transfer via OpenProvider
+              const result = await transferDomain(domain_name, domain_extension, auth_code!);
 
-            console.log(
-              `[stripe webhook] domain ${fullDomain} registered successfully`,
-            );
+              await prisma.domain.create({
+                data: {
+                  name: fullDomain,
+                  status: "pending",
+                  openproviderId: result.id,
+                  userId,
+                },
+              });
+
+              console.log(`[stripe webhook] domain transfer initiated for ${fullDomain}`);
+            } else {
+              // Domain registration payment
+              const result = await registerDomain(domain_name, domain_extension);
+
+              await prisma.domain.create({
+                data: {
+                  name: fullDomain,
+                  status: "active",
+                  openproviderId: result.id,
+                  registeredAt: new Date(),
+                  expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+                  userId,
+                },
+              });
+
+              console.log(`[stripe webhook] domain ${fullDomain} registered successfully`);
+            }
           }
         } else {
           // Subscription checkout
