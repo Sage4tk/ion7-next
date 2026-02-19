@@ -22,11 +22,49 @@ interface Email {
   createdAt: string;
 }
 
+interface StorageUsage {
+  usedMb: number;
+  totalMb: number;
+}
+
+function formatMb(mb: number): string {
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+  return `${mb} MB`;
+}
+
+function StorageBar({ usage }: { usage: StorageUsage }) {
+  const pct = Math.min((usage.usedMb / usage.totalMb) * 100, 100);
+  const barColor =
+    pct > 90
+      ? "bg-destructive"
+      : pct > 70
+        ? "bg-yellow-500"
+        : "bg-primary";
+
+  return (
+    <div className="mt-1.5 w-full max-w-xs">
+      <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+        <span>{formatMb(usage.usedMb)} used</span>
+        <span>{formatMb(usage.totalMb)}</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full transition-all ${barColor}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function EmailsPage() {
   const { id } = useParams<{ id: string }>();
   const [domainName, setDomainName] = useState<string | null>(null);
   const [emails, setEmails] = useState<Email[]>([]);
   const [loading, setLoading] = useState(true);
+  const [usage, setUsage] = useState<
+    Record<string, StorageUsage | null> | null
+  >(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [prefix, setPrefix] = useState("");
   const [password, setPassword] = useState("");
@@ -57,6 +95,15 @@ export default function EmailsPage() {
     }
     fetchData();
   }, [id]);
+
+  // Fetch storage usage separately (slower, non-blocking)
+  useEffect(() => {
+    if (emails.length === 0) return;
+    fetch(`/api/domains/${id}/emails/usage`)
+      .then((r) => r.json())
+      .then((data) => setUsage(data.usage ?? null))
+      .catch(() => {});
+  }, [id, emails.length]);
 
   async function handleCreate() {
     setError(null);
@@ -95,6 +142,12 @@ export default function EmailsPage() {
       });
       if (res.ok) {
         setEmails((prev) => prev.filter((e) => e.id !== emailId));
+        setUsage((prev) => {
+          if (!prev) return prev;
+          const next = { ...prev };
+          delete next[emailId];
+          return next;
+        });
       }
     } catch {
       // Silently fail — user can retry
@@ -184,29 +237,35 @@ export default function EmailsPage() {
             <p className="text-sm">No email accounts yet</p>
           </div>
         ) : (
-          emails.map((email) => (
-            <div
-              key={email.id}
-              className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-4 py-3"
-            >
-              <div className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="font-mono text-sm">{email.address}</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDelete(email.id)}
-                disabled={deletingId === email.id}
+          emails.map((email) => {
+            const emailUsage = usage?.[email.id] ?? null;
+            return (
+              <div
+                key={email.id}
+                className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-4 py-3"
               >
-                {deletingId === email.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                )}
-              </Button>
-            </div>
-          ))
+                <div className="mr-4 min-w-0 flex-1">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="font-mono text-sm">{email.address}</span>
+                  </div>
+                  {emailUsage && <StorageBar usage={emailUsage} />}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDelete(email.id)}
+                  disabled={deletingId === email.id}
+                >
+                  {deletingId === email.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                  )}
+                </Button>
+              </div>
+            );
+          })
         )}
       </div>
     </div>

@@ -67,6 +67,30 @@ export async function createEmailAccount(
   return data.data as { zuid: string; primaryEmailAddress: string };
 }
 
+export async function getEmailStorageUsage(zohoAccountId: string): Promise<{
+  usedMb: number;
+  totalMb: number;
+} | null> {
+  try {
+    const token = await getAccessToken();
+    const res = await fetch(
+      `https://mail.zoho.com/api/organization/${ZOHO_ORG_ID}/storage/${zohoAccountId}`,
+      { headers: { Authorization: `Zoho-oauthtoken ${token}` } },
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const usedStorage = data.data?.usedStorage; // MB
+    const totalStorage = data.data?.totalStorage; // GB
+    if (typeof usedStorage !== "number") return null;
+    return {
+      usedMb: usedStorage,
+      totalMb: typeof totalStorage === "number" ? totalStorage * 1024 : 5120,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function deleteEmailAccount(emailAddress: string) {
   const token = await getAccessToken();
 
