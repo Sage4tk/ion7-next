@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { getPlanByPriceId } from "@/lib/plans";
-import { registerDomain, transferDomain } from "@/lib/openprovider";
+import { registerDomain, transferDomain, renewDomain } from "@/lib/openprovider";
 import type Stripe from "stripe";
 
 export async function POST(request: Request) {
@@ -40,7 +40,29 @@ export async function POST(request: Request) {
             `[stripe webhook] domain ${type ?? "registration"} payment: ${domain_name}.${domain_extension} for user ${userId}`,
           );
 
-          if (domain_name && domain_extension && userId) {
+          if (type === "renewal") {
+            // Domain renewal overage payment
+            const { domain_id } = session.metadata ?? {};
+
+            if (domain_id) {
+              const domain = await prisma.domain.findUnique({ where: { id: domain_id } });
+
+              if (domain?.openproviderId) {
+                await renewDomain(domain.openproviderId);
+
+                const currentExpiry = domain.expiresAt ?? new Date();
+                const newExpiry = new Date(currentExpiry);
+                newExpiry.setFullYear(newExpiry.getFullYear() + 1);
+
+                await prisma.domain.update({
+                  where: { id: domain_id },
+                  data: { expiresAt: newExpiry, status: "active" },
+                });
+
+                console.log(`[stripe webhook] domain ${domain.name} renewed successfully`);
+              }
+            }
+          } else if (domain_name && domain_extension && userId) {
             const fullDomain = `${domain_name}.${domain_extension}`;
 
             if (type === "transfer") {

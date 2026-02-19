@@ -234,6 +234,25 @@ export async function registerDomain(
   return { id: json.data.id };
 }
 
+export async function renewDomain(openproviderId: number): Promise<void> {
+  const token = await getToken();
+  const res = await fetch(`${BASE_URL}/domains/${openproviderId}/renew`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ period: 1 }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(
+      json.desc || json.message || `OpenProvider renew failed: ${res.status}`,
+    );
+  }
+}
+
 export async function transferDomain(
   name: string,
   extension: string,

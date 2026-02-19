@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { checkDomains } from "@/lib/openprovider";
+import { calcChargeAmountAed } from "@/lib/domain-credit";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -82,17 +83,21 @@ export async function POST(request: Request) {
     });
   }
 
+  const chargeAmountAed = calcChargeAmountAed(domainResult.price);
+
   const checkoutSession = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: "payment",
     line_items: [
       {
         price_data: {
-          currency: domainResult.currency?.toLowerCase() ?? "eur",
-          unit_amount: Math.round(domainResult.price * 100),
+          currency: "aed",
+          unit_amount: Math.round(chargeAmountAed * 100),
           product_data: {
             name: `Domain Transfer: ${fullDomain}`,
-            description: `Transfer ${fullDomain} to ion7 (includes 1 year renewal)`,
+            description: chargeAmountAed > 0
+              ? `Transfer ${fullDomain} to ion7 — includes 1 year renewal (50 AED credit applied)`
+              : `Transfer ${fullDomain} to ion7 — includes 1 year renewal`,
           },
         },
         quantity: 1,
