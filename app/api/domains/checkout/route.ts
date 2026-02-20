@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
-import { checkDomains } from "@/lib/openprovider";
+import { checkDomains, registerDomain } from "@/lib/openprovider";
 import { calcChargeAmountAed } from "@/lib/domain-credit";
 
 export async function POST(request: Request) {
@@ -69,6 +69,30 @@ export async function POST(request: Request) {
   }
 
   const chargeAmountAed = calcChargeAmountAed(domainResult.price);
+
+  // Admin bypass — register directly without Stripe
+  if (user.plan === "admin") {
+    try {
+      const result = await registerDomain(name, extension);
+      const domain = await prisma.domain.create({
+        data: {
+          name: fullDomain,
+          status: "active",
+          openproviderId: result.id,
+          registeredAt: new Date(),
+          expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          userId: session.user.id,
+        },
+      });
+      return NextResponse.json({ url: `/dashboard/domains/${domain.id}` });
+    } catch (err) {
+      console.error("[checkout] admin registration failed:", err);
+      return NextResponse.json(
+        { error: "Failed to register domain. Please try again." },
+        { status: 500 },
+      );
+    }
+  }
 
   // If fully covered by the 50 AED credit, the client should use the free registration route
   if (chargeAmountAed <= 0) {

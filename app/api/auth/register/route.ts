@@ -7,6 +7,8 @@ const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  phone: z.string().min(7, "Phone number is required"),
+  address: z.string().min(1, "Address is required"),
 });
 
 export async function POST(request: Request) {
@@ -17,33 +19,33 @@ export async function POST(request: Request) {
     if (!result.success) {
       return NextResponse.json(
         { error: result.error.issues[0].message },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const { name, email, password } = result.data;
+    const { name, email, password, phone, address } = result.data;
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       return NextResponse.json(
         { error: "An account with this email already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     const hashed = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
-      data: { name, email, password: hashed },
+      data: { name, email, password: hashed, phone, address },
     });
 
     return NextResponse.json(
       { id: user.id, name: user.name, email: user.email },
-      { status: 201 }
+      { status: 201 },
     );
   } catch {
     return NextResponse.json(
       { error: "Something went wrong" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

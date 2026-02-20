@@ -67,6 +67,30 @@ export async function POST(request: Request) {
     );
   }
 
+  const chargeAmountAed = calcChargeAmountAed(domainResult.price);
+
+  // Admin bypass — transfer directly without Stripe
+  if (user.plan === "admin") {
+    try {
+      const result = await transferDomain(name, extension, authCode);
+      await prisma.domain.create({
+        data: {
+          name: fullDomain,
+          status: "pending",
+          openproviderId: result.id,
+          userId: session.user.id,
+        },
+      });
+      return NextResponse.json({ free: true, domainName: fullDomain });
+    } catch (err) {
+      console.error("[transfer-checkout] admin transfer failed:", err);
+      return NextResponse.json(
+        { error: "Failed to initiate domain transfer. Please try again." },
+        { status: 500 },
+      );
+    }
+  }
+
   // Get or create Stripe customer
   let customerId = user.stripeCustomerId;
 
@@ -82,8 +106,6 @@ export async function POST(request: Request) {
       data: { stripeCustomerId: customerId },
     });
   }
-
-  const chargeAmountAed = calcChargeAmountAed(domainResult.price);
 
   // Transfer is fully covered by the 50 AED credit — skip Stripe
   if (chargeAmountAed <= 0) {

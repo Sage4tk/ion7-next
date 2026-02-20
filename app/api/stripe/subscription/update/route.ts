@@ -44,6 +44,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (user?.plan === "admin") {
+    return NextResponse.json(
+      { error: "Admin accounts do not have a Stripe subscription" },
+      { status: 400 },
+    );
+  }
+
   if (!user?.stripeSubscriptionId) {
     return NextResponse.json(
       { error: "No active subscription" },

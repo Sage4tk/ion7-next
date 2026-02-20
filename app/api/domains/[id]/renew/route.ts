@@ -64,6 +64,35 @@ export async function POST(
   if (domain.userId !== session.user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { plan: true },
+  });
+
+  // Admin bypass — renew directly without Stripe
+  if (user?.plan === "admin") {
+    if (!domain.openproviderId) {
+      return NextResponse.json(
+        { error: "Domain is not registered via OpenProvider" },
+        { status: 400 },
+      );
+    }
+    await renewDomain(domain.openproviderId);
+    const currentExpiry = domain.expiresAt ?? new Date();
+    const newExpiry = new Date(currentExpiry);
+    newExpiry.setFullYear(newExpiry.getFullYear() + 1);
+    await prisma.domain.update({
+      where: { id },
+      data: { expiresAt: newExpiry, status: "active" },
+    });
+    return NextResponse.json({
+      renewed: true,
+      free: true,
+      newExpiresAt: newExpiry.toISOString(),
+    });
+  }
+
   if (!domain.openproviderId) {
     return NextResponse.json(
       { error: "Domain is not registered via OpenProvider" },

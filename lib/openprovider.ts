@@ -180,6 +180,42 @@ export async function addZohoMxRecords(domainName: string): Promise<void> {
   });
 }
 
+export async function addAcmValidationRecord(
+  domainName: string,
+  // ACM returns full names like "_abc.www.example.com." — we strip to relative
+  validationName: string,
+  validationValue: string,
+): Promise<void> {
+  // Strip the domain zone and trailing dot: "_abc.www.example.com." → "_abc.www"
+  const relName = validationName
+    .replace(new RegExp(`\\.${domainName}\\.?$`), "")
+    .replace(/\.$/, "");
+  const cleanValue = validationValue.replace(/\.$/, "");
+
+  const existing = await listDnsRecords(domainName);
+
+  const hasRecord = existing.some(
+    (r) => r.type === "CNAME" && r.name === relName,
+  );
+  if (hasRecord) return;
+
+  const records = [
+    ...existing.map((r) => ({
+      type: r.type,
+      name: r.name,
+      value: r.value,
+      ttl: r.ttl,
+      prio: r.prio ?? 0,
+    })),
+    { type: "CNAME", name: relName, value: cleanValue, ttl: 300, prio: 0 },
+  ];
+
+  await apiPut(`/dns/zones/${domainName}`, {
+    name: domainName,
+    records: { records },
+  });
+}
+
 export async function setDomainCname(
   domainName: string,
   target: string,

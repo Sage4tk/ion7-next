@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
-import { checkDomains } from "@/lib/openprovider";
+import { checkDomains, renewDomain } from "@/lib/openprovider";
 import { calcChargeAmountAed } from "@/lib/domain-credit";
 
 export async function POST(
@@ -59,6 +59,25 @@ export async function POST(
   }
 
   const chargeAmountAed = calcChargeAmountAed(domainResult.price);
+
+  // Admin bypass — renew directly without Stripe
+  if (user.plan === "admin") {
+    if (!domain.openproviderId) {
+      return NextResponse.json(
+        { error: "Domain is not registered via OpenProvider" },
+        { status: 400 },
+      );
+    }
+    await renewDomain(domain.openproviderId);
+    const currentExpiry = domain.expiresAt ?? new Date();
+    const newExpiry = new Date(currentExpiry);
+    newExpiry.setFullYear(newExpiry.getFullYear() + 1);
+    await prisma.domain.update({
+      where: { id },
+      data: { expiresAt: newExpiry, status: "active" },
+    });
+    return NextResponse.json({ url: `/dashboard/domains/${id}?renewed=1` });
+  }
 
   if (chargeAmountAed <= 0) {
     return NextResponse.json(

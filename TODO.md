@@ -1,8 +1,8 @@
-- MANAGE SUBSCRIPTIONS (needs test)
-- domain renewal process
+- MANAGE SUBSCRIPTIONS (done)
+- domain renewal process (done)
 - more templates and multiple pages
-- upload page to s3 and direct the domain to it.
-- add domain transfer
+- upload page to s3 and direct the domain to it. (done)
+- add domain transfer (done)
 - test new stripe setup
-- add email storage left for each email
+- add email storage left for each email (done)
 - Freeze account if user's subscrition fails (Done)

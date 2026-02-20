@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { assertAccountActive, AccountFrozenError } from "@/lib/account";
 import { generateSiteHtml } from "@/lib/deploy/html";
 import { uploadSiteToS3 } from "@/lib/deploy/s3";
-import { ensureDistribution, invalidateCache } from "@/lib/deploy/cloudfront";
-import { setDomainCname } from "@/lib/openprovider";
+import { ensureDistribution, invalidateCache, getCertificateValidationRecord } from "@/lib/deploy/cloudfront";
+import { setDomainCname, addAcmValidationRecord } from "@/lib/openprovider";
 import type { SiteContent } from "@/lib/blocks/types";
 
 async function getAuthedDomain(domainId: string) {
@@ -67,7 +67,7 @@ export async function POST(
       await ensureDistribution(
         domain.name,
         domain.cloudfrontDistId,
-        null,
+        domain.certArn ?? null,
       );
 
     // 4. Invalidate cache if re-deploying
@@ -80,7 +80,26 @@ export async function POST(
       await setDomainCname(domain.name, cloudfrontDomain);
     }
 
-    // 6. Update domain record
+    // 6. Add ACM certificate validation CNAME if we have a cert ARN
+    //    Needed for HTTPS to work on www.{domain}. Non-blocking — if ACM hasn't
+    //    generated the validation record yet, it will be retried on the next deploy.
+    const activeCertArn = certArn || domain.certArn;
+    if (activeCertArn) {
+      try {
+        const validationRecord = await getCertificateValidationRecord(activeCertArn);
+        if (validationRecord) {
+          await addAcmValidationRecord(
+            domain.name,
+            validationRecord.name,
+            validationRecord.value,
+          );
+        }
+      } catch {
+        console.warn(`[deploy] could not add ACM validation CNAME for ${domain.name} — will retry on next deploy`);
+      }
+    }
+
+    // 7. Update domain record
     const now = new Date();
     await prisma.domain.update({
       where: { id: domain.id },
@@ -88,6 +107,7 @@ export async function POST(
         deployedAt: now,
         cloudfrontDistId: distributionId,
         cloudfrontDomain: cloudfrontDomain,
+        ...(certArn ? { certArn } : {}),
       },
     });
 

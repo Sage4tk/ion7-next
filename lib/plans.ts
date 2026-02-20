@@ -108,4 +108,5 @@ export const planEmailLimits: Record<string, number> = {
   basic: 5,
   pro: 10,
   business: 50,
+  admin: 50,
 };

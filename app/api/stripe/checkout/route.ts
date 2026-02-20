@@ -27,11 +27,18 @@ export async function POST(request: Request) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { email: true, stripeCustomerId: true },
+    select: { email: true, stripeCustomerId: true, plan: true },
   });
 
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  if (user.plan === "admin") {
+    return NextResponse.json(
+      { error: "Admin accounts do not require a subscription" },
+      { status: 400 },
+    );
   }
 
   let customerId = user.stripeCustomerId;
